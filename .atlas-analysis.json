@@ -1,0 +1,206 @@
+{
+  "projectType": "framework",
+  "projectName": "SST",
+  "projectDescription": "Build full-stack apps on your own infrastructure",
+  "theme": "aspen",
+  "primaryColor": "#d4d4e4",
+  "lightColor": "#8c9495",
+  "darkColor": "#1d1d2d",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/components",
+              "concepts/linking",
+              "concepts/live-development",
+              "concepts/console",
+              "concepts/config"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/deployment",
+              "guides/development-workflow",
+              "guides/secrets-management",
+              "guides/stage-management",
+              "guides/providers"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Components",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "components/overview"
+            ]
+          },
+          {
+            "group": "AWS",
+            "pages": [
+              "components/aws/function",
+              "components/aws/bucket",
+              "components/aws/nextjs",
+              "components/aws/remix",
+              "components/aws/astro",
+              "components/aws/apigatewayv2",
+              "components/aws/router",
+              "components/aws/queue",
+              "components/aws/dynamo",
+              "components/aws/postgres",
+              "components/aws/aurora",
+              "components/aws/cluster",
+              "components/aws/service",
+              "components/aws/vpc",
+              "components/aws/auth",
+              "components/aws/realtime"
+            ]
+          },
+          {
+            "group": "Cloudflare",
+            "pages": [
+              "components/cloudflare/worker",
+              "components/cloudflare/bucket",
+              "components/cloudflare/kv",
+              "components/cloudflare/d1",
+              "components/cloudflare/queue"
+            ]
+          },
+          {
+            "group": "Vercel",
+            "pages": [
+              "components/vercel/overview"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "cli/overview"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/init",
+              "cli/dev",
+              "cli/deploy",
+              "cli/add",
+              "cli/install",
+              "cli/secret",
+              "cli/shell",
+              "cli/remove",
+              "cli/refresh",
+              "cli/unlock",
+              "cli/upgrade"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "cli/config"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "SDK Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "sdk/overview"
+            ]
+          },
+          {
+            "group": "JavaScript/TypeScript",
+            "pages": [
+              "sdk/js/resource",
+              "sdk/js/linking",
+              "sdk/js/auth"
+            ]
+          },
+          {
+            "group": "Python",
+            "pages": [
+              "sdk/python/resource",
+              "sdk/python/linking"
+            ]
+          },
+          {
+            "group": "Go",
+            "pages": [
+              "sdk/go/resource",
+              "sdk/go/linking"
+            ]
+          },
+          {
+            "group": "Rust",
+            "pages": [
+              "sdk/rust/resource",
+              "sdk/rust/linking"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Infrastructure as code with TypeScript",
+    "Live development mode with hot reloading",
+    "Multi-cloud support (AWS, Cloudflare, Vercel)",
+    "Component linking for type-safe resource references",
+    "Built-in authentication and authorization",
+    "Real-time subscriptions",
+    "Secrets management",
+    "Console for monitoring and debugging"
+  ],
+  "publicApiSurface": [
+    "sst.aws.Function",
+    "sst.aws.Bucket",
+    "sst.aws.Nextjs",
+    "sst.aws.Remix",
+    "sst.aws.Astro",
+    "sst.aws.Router",
+    "sst.aws.ApiGatewayV2",
+    "sst.aws.Queue",
+    "sst.aws.Dynamo",
+    "sst.aws.Postgres",
+    "sst.aws.Aurora",
+    "sst.aws.Cluster",
+    "sst.aws.Service",
+    "sst.aws.Vpc",
+    "sst.aws.Auth",
+    "sst.cloudflare.Worker",
+    "sst.cloudflare.Bucket",
+    "sst.cloudflare.Kv",
+    "sst.cloudflare.D1",
+    "sst.Secret",
+    "sst.Linkable",
+    "Resource.MyResource",
+    "sst init",
+    "sst dev",
+    "sst deploy",
+    "sst secret set",
+    "sst shell"
+  ]
+}
