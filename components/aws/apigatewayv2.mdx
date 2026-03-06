@@ -1,0 +1,186 @@
+---
+title: ApiGatewayV2
+description: Reference doc for the `sst.aws.ApiGatewayV2` component.
+---
+
+The `ApiGatewayV2` component lets you add an [Amazon API Gateway HTTP API](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api.html) to your app.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const api = new sst.aws.ApiGatewayV2("MyApi");
+```
+
+## Parameters
+
+### domain
+
+<ParamField path="domain" type="string | object">
+  Set a custom domain for your HTTP API. Supports AWS Route 53, Cloudflare, and Vercel.
+
+  ```ts
+  {
+    domain: "api.example.com"
+  }
+  ```
+
+  For Cloudflare domains:
+
+  ```ts
+  {
+    domain: {
+      name: "api.example.com",
+      dns: sst.cloudflare.dns()
+    }
+  }
+  ```
+</ParamField>
+
+### cors
+
+<ParamField path="cors" type="boolean | object" default="true">
+  Configure CORS (Cross-origin resource sharing) settings for your HTTP API.
+
+  ```ts
+  {
+    cors: {
+      allowMethods: ["GET", "POST"],
+      allowOrigins: ["https://example.com"]
+    }
+  }
+  ```
+
+  Disable CORS:
+
+  ```ts
+  {
+    cors: false
+  }
+  ```
+</ParamField>
+
+### link
+
+<ParamField path="link" type="array">
+  [Link resources](/docs/linking/) to all routes. These will be merged with resources linked to individual routes.
+
+  ```ts
+  {
+    link: [bucket, stripeKey]
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### url
+
+<Property type="Output<string>">
+  The URL of the HTTP API.
+
+  ```ts
+  console.log(api.url);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  The underlying resources this component creates.
+
+  #### api
+
+  <Property type="aws.apigatewayv2.Api">
+    The API Gateway HTTP API.
+  </Property>
+
+  #### stage
+
+  <Property type="aws.apigatewayv2.Stage">
+    The API Gateway stage.
+  </Property>
+</Property>
+
+## Methods
+
+### route
+
+<Method>
+  Add a route to the HTTP API.
+
+  ```ts
+  api.route("GET /", "src/get.handler");
+  api.route("POST /", "src/post.handler");
+  ```
+
+  Configure the route:
+
+  ```ts
+  api.route("GET /users", {
+    handler: "src/users.handler",
+    memory: "2048 MB",
+    link: [table]
+  });
+  ```
+
+  Add IAM authorization:
+
+  ```ts
+  api.route("GET /", {
+    handler: "src/get.handler",
+    auth: { iam: true }
+  });
+  ```
+</Method>
+
+## SDK
+
+Access the API URL in your function code:
+
+```ts title="src/lambda.ts"
+import { Resource } from "sst";
+
+console.log(Resource.MyApi.url);
+```
+
+## Examples
+
+### Add routes
+
+```ts title="sst.config.ts"
+const api = new sst.aws.ApiGatewayV2("MyApi");
+
+api.route("GET /", "src/get.handler");
+api.route("POST /", "src/post.handler");
+```
+
+### Add a custom domain
+
+```ts title="sst.config.ts"
+new sst.aws.ApiGatewayV2("MyApi", {
+  domain: "api.example.com"
+});
+```
+
+### Link resources to all routes
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+
+const api = new sst.aws.ApiGatewayV2("MyApi", {
+  link: [bucket]
+});
+
+api.route("GET /", "src/get.handler");
+```
+
+### Configure CORS
+
+```ts title="sst.config.ts"
+new sst.aws.ApiGatewayV2("MyApi", {
+  cors: {
+    allowMethods: ["GET", "POST", "DELETE"],
+    allowOrigins: ["https://example.com"]
+  }
+});
+```

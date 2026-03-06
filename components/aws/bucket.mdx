@@ -1,0 +1,216 @@
+---
+title: Bucket
+description: Reference doc for the `sst.aws.Bucket` component.
+---
+
+{/* DO NOT EDIT. AUTO-GENERATED FROM pkg/platform/src/components/aws/bucket.ts */}
+
+The `Bucket` component lets you add an [AWS S3 Bucket](https://aws.amazon.com/s3/) to your app.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+```
+
+## Parameters
+
+### access
+
+<ParamField path="access" type='"public" | "cloudfront"'>
+  Enable public read access for all files in the bucket.
+
+  ```ts
+  {
+    access: "public"
+  }
+  ```
+
+  <Tip>
+    If using a `Router` to serve files, use `"cloudfront"` access instead.
+  </Tip>
+</ParamField>
+
+### cors
+
+<ParamField path="cors" type="boolean | object" default="true">
+  Configure CORS (Cross-origin resource sharing) settings.
+
+  ```ts
+  {
+    cors: {
+      allowOrigins: ["https://example.com"],
+      allowMethods: ["GET", "POST"]
+    }
+  }
+  ```
+
+  Disable CORS:
+
+  ```ts
+  {
+    cors: false
+  }
+  ```
+</ParamField>
+
+### versioning
+
+<ParamField path="versioning" type="boolean" default="false">
+  Enable versioning to store multiple versions of each object.
+
+  ```ts
+  {
+    versioning: true
+  }
+  ```
+</ParamField>
+
+### lifecycle
+
+<ParamField path="lifecycle" type="array">
+  Configure lifecycle rules to automatically delete or archive objects.
+
+  ```ts
+  {
+    lifecycle: [
+      {
+        prefix: "/tmp",
+        expiresIn: "30 days"
+      }
+    ]
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### name
+
+<Property type="Output<string>">
+  The generated name of the S3 Bucket.
+
+  ```ts
+  console.log(bucket.name);
+  ```
+</Property>
+
+### arn
+
+<Property type="Output<string>">
+  The ARN of the S3 Bucket.
+
+  ```ts
+  console.log(bucket.arn);
+  ```
+</Property>
+
+### domain
+
+<Property type="Output<string>">
+  The domain name of the bucket.
+
+  ```ts
+  console.log(bucket.domain);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  The underlying resources this component creates.
+
+  #### bucket
+
+  <Property type="aws.s3.Bucket">
+    The Amazon S3 bucket.
+  </Property>
+</Property>
+
+## Methods
+
+### notify
+
+<Method>
+  Subscribe to events from this bucket with functions, queues, or topics.
+
+  ```ts
+  bucket.notify({
+    notifications: [
+      {
+        name: "MySubscriber",
+        function: "src/subscriber.handler"
+      }
+    ]
+  });
+  ```
+
+  Subscribe with a queue:
+
+  ```ts
+  const queue = new sst.aws.Queue("MyQueue");
+
+  bucket.notify({
+    notifications: [
+      {
+        name: "MySubscriber",
+        queue: queue,
+        events: ["s3:ObjectCreated:*"]
+      }
+    ]
+  });
+  ```
+</Method>
+
+## SDK
+
+Access bucket properties in your function code:
+
+```ts title="src/lambda.ts"
+import { Resource } from "sst";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const client = new S3Client();
+await client.send(new PutObjectCommand({
+  Bucket: Resource.MyBucket.name,
+  Key: "file.txt",
+  Body: "Hello World"
+}));
+```
+
+## Examples
+
+### Enable public access
+
+```ts title="sst.config.ts"
+new sst.aws.Bucket("MyBucket", {
+  access: "public"
+});
+```
+
+### Add notifications
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+
+bucket.notify({
+  notifications: [
+    {
+      name: "MySubscriber",
+      function: "src/subscriber.handler",
+      events: ["s3:ObjectCreated:*"]
+    }
+  ]
+});
+```
+
+### Link to a function
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/api.handler",
+  link: [bucket]
+});
+```

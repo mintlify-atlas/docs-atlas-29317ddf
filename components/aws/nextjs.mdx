@@ -1,0 +1,207 @@
+---
+title: Nextjs
+description: Reference doc for the `sst.aws.Nextjs` component.
+---
+
+{/* DO NOT EDIT. AUTO-GENERATED FROM pkg/platform/src/components/aws/nextjs.ts */}
+
+The `Nextjs` component lets you deploy [Next.js](https://nextjs.org) apps on AWS. It uses [OpenNext](https://open-next.js.org) to build your Next.js app for AWS.
+
+## Constructor
+
+```ts title="sst.config.ts"
+new sst.aws.Nextjs("MyWeb");
+```
+
+## Parameters
+
+### path
+
+<ParamField path="path" type="string" default=".">
+  Path to the Next.js app directory relative to `sst.config.ts`.
+
+  ```ts
+  {
+    path: "packages/web"
+  }
+  ```
+</ParamField>
+
+### domain
+
+<ParamField path="domain" type="string | object">
+  Set a custom domain for your Next.js app. Supports AWS Route 53, Cloudflare, and Vercel.
+
+  ```ts
+  {
+    domain: "example.com"
+  }
+  ```
+
+  Redirect `www` to apex domain:
+
+  ```ts
+  {
+    domain: {
+      name: "example.com",
+      redirects: ["www.example.com"]
+    }
+  }
+  ```
+</ParamField>
+
+### link
+
+<ParamField path="link" type="array">
+  [Link resources](/docs/linking/) to your Next.js app. This grants permissions and allows you to access them via the [SDK](/docs/reference/sdk/).
+
+  ```ts
+  {
+    link: [bucket, stripeKey]
+  }
+  ```
+</ParamField>
+
+### environment
+
+<ParamField path="environment" type="Record<string, string>">
+  Set [environment variables](https://nextjs.org/docs/app/building-your-application/configuring/environment-variables) for your Next.js app.
+
+  ```ts
+  {
+    environment: {
+      API_URL: api.url,
+      NEXT_PUBLIC_STRIPE_KEY: "pk_test_123"
+    }
+  }
+  ```
+
+  <Note>
+    Prefix with `NEXT_PUBLIC_` to access variables in the browser.
+  </Note>
+</ParamField>
+
+### openNextVersion
+
+<ParamField path="openNextVersion" type="string">
+  Configure the OpenNext version for building your app. By default, SST auto-detects based on your Next.js version.
+
+  ```ts
+  {
+    openNextVersion: "3.4.1"
+  }
+  ```
+</ParamField>
+
+### imageOptimization
+
+<ParamField path="imageOptimization" type="object" default="{memory: '1536 MB'}">
+  Configure the Lambda function for image optimization.
+
+  ```ts
+  {
+    imageOptimization: {
+      memory: "2048 MB"
+    }
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### url
+
+<Property type="Output<string>">
+  The URL of the Next.js app. If `domain` is set, this is the custom domain URL.
+
+  ```ts
+  console.log(myWeb.url);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  The underlying resources this component creates.
+
+  #### server
+
+  <Property type="aws.lambda.Function">
+    The Lambda function for the Next.js server.
+  </Property>
+
+  #### assets
+
+  <Property type="aws.s3.Bucket">
+    The S3 bucket for static assets.
+  </Property>
+
+  #### cdn
+
+  <Property type="aws.cloudfront.Distribution">
+    The CloudFront distribution.
+  </Property>
+</Property>
+
+## SDK
+
+Access linked resources in your Next.js app:
+
+```ts title="app/page.tsx"
+import { Resource } from "sst";
+
+console.log(Resource.MyBucket.name);
+```
+
+## Examples
+
+### Change the path
+
+```ts title="sst.config.ts"
+new sst.aws.Nextjs("MyWeb", {
+  path: "packages/web"
+});
+```
+
+### Add a custom domain
+
+```ts title="sst.config.ts"
+new sst.aws.Nextjs("MyWeb", {
+  domain: "my-app.com"
+});
+```
+
+### Link resources
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Nextjs("MyWeb", {
+  link: [bucket]
+});
+```
+
+Access them in your app:
+
+```ts title="app/page.tsx"
+import { Resource } from "sst";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const client = new S3Client();
+await client.send(new PutObjectCommand({
+  Bucket: Resource.MyBucket.name,
+  Key: "file.txt",
+  Body: "Hello"
+}));
+```
+
+### Redirect www to apex
+
+```ts title="sst.config.ts"
+new sst.aws.Nextjs("MyWeb", {
+  domain: {
+    name: "my-app.com",
+    redirects: ["www.my-app.com"]
+  }
+});
+```

@@ -1,0 +1,134 @@
+---
+title: Worker
+description: Reference doc for the `sst.cloudflare.Worker` component.
+---
+
+The `Worker` component lets you deploy [Cloudflare Workers](https://workers.cloudflare.com/) to your app.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const worker = new sst.cloudflare.Worker("MyWorker", {
+  handler: "src/worker.ts",
+  url: true
+});
+```
+
+## Parameters
+
+### handler
+
+<ParamField path="handler" type="string" required>
+  Path to the worker handler file.
+
+  ```ts
+  {
+    handler: "src/worker.ts"
+  }
+  ```
+</ParamField>
+
+### url
+
+<ParamField path="url" type="boolean" default="false">
+  Enable a public URL for the worker.
+
+  ```ts
+  {
+    url: true
+  }
+  ```
+</ParamField>
+
+### link
+
+<ParamField path="link" type="array">
+  [Link resources](/docs/linking/) to the worker.
+
+  ```ts
+  {
+    link: [bucket, kv]
+  }
+  ```
+</ParamField>
+
+### domain
+
+<ParamField path="domain" type="string | object">
+  Set a custom domain for your worker.
+
+  ```ts
+  {
+    domain: "api.example.com"
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### url
+
+<Property type="Output<string>">
+  The worker URL if `url` is enabled.
+
+  ```ts
+  console.log(worker.url);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  #### script
+
+  <Property type="cloudflare.WorkerScript">
+    The Cloudflare Worker script.
+  </Property>
+</Property>
+
+## SDK
+
+Access linked resources in your worker:
+
+```ts title="src/worker.ts"
+import { Resource } from "sst";
+
+export default {
+  async fetch(request) {
+    console.log(Resource.MyBucket.name);
+    return new Response("Hello");
+  }
+};
+```
+
+## Examples
+
+### Create a worker
+
+```ts title="sst.config.ts"
+new sst.cloudflare.Worker("MyWorker", {
+  handler: "src/worker.ts",
+  url: true
+});
+```
+
+### Add a custom domain
+
+```ts title="sst.config.ts"
+new sst.cloudflare.Worker("MyWorker", {
+  handler: "src/worker.ts",
+  domain: "api.example.com"
+});
+```
+
+### Link resources
+
+```ts title="sst.config.ts"
+const kv = new sst.cloudflare.Kv("MyKv");
+
+new sst.cloudflare.Worker("MyWorker", {
+  handler: "src/worker.ts",
+  link: [kv],
+  url: true
+});
+```

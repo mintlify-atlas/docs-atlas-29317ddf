@@ -1,0 +1,255 @@
+---
+title: "Linking (Go)"
+description: "Link resources to Go Lambda functions"
+---
+
+Link resources to your Go Lambda functions to access them at runtime.
+
+## Basic Linking
+
+Link resources in your infrastructure code:
+
+```typescript sst.config.ts
+const bucket = new sst.aws.Bucket("MyBucket");
+const table = new sst.aws.Dynamo("MyTable", {
+  fields: { id: "string" },
+  primaryIndex: { hashKey: "id" }
+});
+
+new sst.aws.Function("MyGoFunction", {
+  handler: "bootstrap",
+  runtime: "go",
+  link: [bucket, table]
+});
+```
+
+Access them in your Go code:
+
+```go main.go
+package main
+
+import (
+    "context"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+func handler(ctx context.Context) error {
+    bucketName := resource.Get("MyBucket", "name")
+    tableName := resource.Get("MyTable", "name")
+    
+    // Use the resources
+    return nil
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## Automatic Permissions
+
+Linking automatically grants IAM permissions:
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Function("Upload", {
+  handler: "bootstrap",
+  runtime: "go",
+  link: [bucket]
+  // Automatically gets s3:PutObject, s3:GetObject, etc.
+});
+```
+
+## Multiple Resources
+
+Link multiple resources:
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+const table = new sst.aws.Dynamo("MyTable", { /* ... */ });
+const queue = new sst.aws.Queue("MyQueue");
+
+new sst.aws.Function("Worker", {
+  handler: "bootstrap",
+  runtime: "go",
+  link: [bucket, table, queue]
+});
+```
+
+All accessible in your handler:
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+func handler(ctx context.Context) error {
+    bucket := resource.Get("MyBucket", "name")
+    table := resource.Get("MyTable", "name")
+    queueURL := resource.Get("MyQueue", "url")
+    
+    // Use all resources
+    return nil
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## Linking Secrets
+
+```typescript sst.config.ts
+const secret = new sst.Secret("ApiKey");
+
+new sst.aws.Function("MyFunction", {
+  handler: "bootstrap",
+  runtime: "go",
+  link: [secret]
+});
+```
+
+```go main.go
+package main
+
+import (
+    "context"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+func handler(ctx context.Context) error {
+    apiKey := resource.Get("ApiKey", "value")
+    // Use the secret
+    return nil
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## Building Go Functions
+
+SST automatically builds your Go functions:
+
+```typescript sst.config.ts
+new sst.aws.Function("MyFunction", {
+  handler: "bootstrap", // SST builds from cmd/bootstrap/main.go
+  runtime: "go"
+});
+```
+
+Project structure:
+
+```
+.
+├── sst.config.ts
+└── cmd/
+    └── bootstrap/
+        └── main.go
+```
+
+## Best Practices
+
+### Link Only What You Need
+
+```typescript
+// ✓ Good - minimal permissions
+new sst.aws.Function("GetUser", {
+  runtime: "go",
+  handler: "bootstrap",
+  link: [usersTable]
+});
+
+// ✗ Avoid - over-permissioned
+new sst.aws.Function("GetUser", {
+  runtime: "go",
+  handler: "bootstrap",
+  link: [usersTable, ordersTable, productsTable]
+});
+```
+
+### Initialize Clients Once
+
+```go
+package main
+
+import (
+    "context"
+    "sync"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/s3"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+var (
+    s3Client *s3.Client
+    once     sync.Once
+)
+
+func getS3Client(ctx context.Context) *s3.Client {
+    once.Do(func() {
+        cfg, _ := config.LoadDefaultConfig(ctx)
+        s3Client = s3.NewFromConfig(cfg)
+    })
+    return s3Client
+}
+
+func handler(ctx context.Context) error {
+    client := getS3Client(ctx)
+    bucketName := resource.Get("MyBucket", "name")
+    
+    // Use client and bucket
+    return nil
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+### Use Structured Error Handling
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+func handler(ctx context.Context) error {
+    bucketName := resource.Get("MyBucket", "name")
+    if bucketName == "" {
+        return fmt.Errorf("bucket name not found")
+    }
+    
+    // Use bucket
+    return nil
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Resource Access" icon="database" href="/sdk/go/resource">
+    Learn more about the Resource API for Go
+  </Card>
+  <Card title="Go Functions" icon="golang" href="/components/aws/function">
+    Deploy Go Lambda functions
+  </Card>
+</CardGroup>

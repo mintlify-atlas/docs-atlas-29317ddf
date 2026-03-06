@@ -1,0 +1,137 @@
+---
+title: Astro
+description: Reference doc for the `sst.aws.Astro` component.
+---
+
+The `Astro` component lets you deploy [Astro](https://astro.build) sites on AWS.
+
+## Constructor
+
+```ts title="sst.config.ts"
+new sst.aws.Astro("MyWeb");
+```
+
+## Parameters
+
+### path
+
+<ParamField path="path" type="string" default=".">
+  Path to the Astro site directory relative to `sst.config.ts`.
+
+  ```ts
+  {
+    path: "packages/web"
+  }
+  ```
+</ParamField>
+
+### domain
+
+<ParamField path="domain" type="string | object">
+  Set a custom domain for your Astro site.
+
+  ```ts
+  {
+    domain: "example.com"
+  }
+  ```
+</ParamField>
+
+### link
+
+<ParamField path="link" type="array">
+  [Link resources](/docs/linking/) to your Astro site.
+
+  ```ts
+  {
+    link: [bucket, stripeKey]
+  }
+  ```
+</ParamField>
+
+### environment
+
+<ParamField path="environment" type="Record<string, string>">
+  Set [environment variables](https://docs.astro.build/en/guides/environment-variables/) for your Astro site.
+
+  ```ts
+  {
+    environment: {
+      API_URL: api.url,
+      PUBLIC_STRIPE_KEY: "pk_test_123"
+    }
+  }
+  ```
+
+  <Note>
+    Prefix with `PUBLIC_` to access variables on the client-side.
+  </Note>
+</ParamField>
+
+## Properties
+
+### url
+
+<Property type="Output<string>">
+  The URL of the Astro site.
+
+  ```ts
+  console.log(myWeb.url);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  The underlying resources this component creates.
+
+  #### server
+
+  <Property type="aws.lambda.Function">
+    The Lambda function for the Astro server.
+  </Property>
+
+  #### assets
+
+  <Property type="aws.s3.Bucket">
+    The S3 bucket for static assets.
+  </Property>
+</Property>
+
+## SDK
+
+Access linked resources:
+
+```ts title="src/pages/index.astro"
+import { Resource } from "sst";
+
+console.log(Resource.MyBucket.name);
+```
+
+## Examples
+
+### Change the path
+
+```ts title="sst.config.ts"
+new sst.aws.Astro("MyWeb", {
+  path: "packages/web"
+});
+```
+
+### Add a custom domain
+
+```ts title="sst.config.ts"
+new sst.aws.Astro("MyWeb", {
+  domain: "my-site.com"
+});
+```
+
+### Link resources
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Astro("MyWeb", {
+  link: [bucket]
+});
+```

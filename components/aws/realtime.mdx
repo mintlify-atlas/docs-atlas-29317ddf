@@ -1,0 +1,81 @@
+---
+title: Realtime
+description: Reference doc for the `sst.aws.Realtime` component.
+---
+
+The `Realtime` component lets you add pub/sub messaging to your app using WebSockets. It uses [Amazon API Gateway WebSocket API](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api.html).
+
+## Constructor
+
+```ts title="sst.config.ts"
+const realtime = new sst.aws.Realtime("MyRealtime", {
+  authorizer: "src/authorizer.handler"
+});
+```
+
+## Parameters
+
+### authorizer
+
+<ParamField path="authorizer" type="string | FunctionArgs">
+  The Lambda function to authorize connections.
+
+  ```ts
+  {
+    authorizer: "src/authorizer.handler"
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### url
+
+<Property type="Output<string>">
+  The WebSocket URL.
+
+  ```ts
+  console.log(realtime.url);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  #### api
+
+  <Property type="aws.apigatewayv2.Api">
+    The API Gateway WebSocket API.
+  </Property>
+</Property>
+
+## SDK
+
+Publish messages to connected clients:
+
+```ts title="src/publisher.ts"
+import { Resource } from "sst";
+import { ApiGatewayManagementApiClient, PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
+
+const client = new ApiGatewayManagementApiClient({
+  endpoint: Resource.MyRealtime.url
+});
+
+await client.send(new PostToConnectionCommand({
+  ConnectionId: connectionId,
+  Data: JSON.stringify({ message: "Hello" })
+}));
+```
+
+## Examples
+
+### Create a realtime component
+
+```ts title="sst.config.ts"
+const realtime = new sst.aws.Realtime("MyRealtime", {
+  authorizer: "src/authorizer.handler"
+});
+
+realtime.subscribe("$default", "src/default.handler");
+realtime.subscribe("sendMessage", "src/sendMessage.handler");
+```

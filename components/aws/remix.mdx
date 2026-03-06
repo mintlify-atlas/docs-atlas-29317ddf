@@ -1,0 +1,143 @@
+---
+title: Remix
+description: Reference doc for the `sst.aws.Remix` component.
+---
+
+The `Remix` component lets you deploy [Remix](https://remix.run) apps on AWS.
+
+## Constructor
+
+```ts title="sst.config.ts"
+new sst.aws.Remix("MyWeb");
+```
+
+## Parameters
+
+### path
+
+<ParamField path="path" type="string" default=".">
+  Path to the Remix app directory relative to `sst.config.ts`.
+
+  ```ts
+  {
+    path: "packages/web"
+  }
+  ```
+</ParamField>
+
+### domain
+
+<ParamField path="domain" type="string | object">
+  Set a custom domain for your Remix app.
+
+  ```ts
+  {
+    domain: "example.com"
+  }
+  ```
+
+  Redirect `www` to apex domain:
+
+  ```ts
+  {
+    domain: {
+      name: "example.com",
+      redirects: ["www.example.com"]
+    }
+  }
+  ```
+</ParamField>
+
+### link
+
+<ParamField path="link" type="array">
+  [Link resources](/docs/linking/) to your Remix app.
+
+  ```ts
+  {
+    link: [bucket, stripeKey]
+  }
+  ```
+</ParamField>
+
+### environment
+
+<ParamField path="environment" type="Record<string, string>">
+  Set [environment variables](https://remix.run/docs/en/main/guides/envvars) for your Remix app.
+
+  ```ts
+  {
+    environment: {
+      API_URL: api.url
+    }
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### url
+
+<Property type="Output<string>">
+  The URL of the Remix app.
+
+  ```ts
+  console.log(myWeb.url);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  The underlying resources this component creates.
+
+  #### server
+
+  <Property type="aws.lambda.Function">
+    The Lambda function for the Remix server.
+  </Property>
+
+  #### assets
+
+  <Property type="aws.s3.Bucket">
+    The S3 bucket for static assets.
+  </Property>
+</Property>
+
+## SDK
+
+Access linked resources:
+
+```ts title="app/routes/_index.tsx"
+import { Resource } from "sst";
+
+console.log(Resource.MyBucket.name);
+```
+
+## Examples
+
+### Change the path
+
+```ts title="sst.config.ts"
+new sst.aws.Remix("MyWeb", {
+  path: "packages/web"
+});
+```
+
+### Add a custom domain
+
+```ts title="sst.config.ts"
+new sst.aws.Remix("MyWeb", {
+  domain: "my-app.com"
+});
+```
+
+### Link resources
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Remix("MyWeb", {
+  link: [bucket]
+});
+```

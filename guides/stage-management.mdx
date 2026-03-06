@@ -1,0 +1,583 @@
+---
+title: Stage Management
+description: Manage multiple environments with SST stages
+---
+
+Stages in SST let you deploy multiple isolated instances of your application. This guide shows you how to effectively manage stages for different environments and workflows.
+
+## What are stages?
+
+A stage is an isolated instance of your application with its own:
+
+- **Resources** — Separate Lambda functions, databases, buckets, etc.
+- **State** — Independent deployment state
+- **Secrets** — Stage-specific secret values
+- **Configuration** — Different settings per stage
+
+```bash
+# Deploy to different stages
+sst deploy --stage dev
+sst deploy --stage staging  
+sst deploy --stage production
+```
+
+Each stage is completely isolated—resources don't conflict or interfere.
+
+## Default stage
+
+If you don't specify a stage, SST uses your username:
+
+```bash
+sst deploy
+# Equivalent to: sst deploy --stage <your-username>
+```
+
+This gives each developer their own personal stage automatically.
+
+<Tip>
+Personal stages let developers work independently without stepping on each other's toes.
+</Tip>
+
+## Specifying stages
+
+Set the stage in multiple ways:
+
+### Via flag
+
+```bash
+sst deploy --stage production
+```
+
+### Via environment variable
+
+```bash
+export SST_STAGE=production
+sst deploy
+```
+
+### Via .env file
+
+```bash title=".env"
+SST_STAGE=production
+```
+
+```bash
+sst deploy
+```
+
+The precedence order is:
+1. `--stage` flag (highest priority)
+2. `SST_STAGE` environment variable
+3. `.env` file
+4. Username (default)
+
+## Stage naming
+
+Stage names:
+- Must be URL-safe (alphanumeric, hyphens, underscores)
+- Should be descriptive and consistent
+- Are case-sensitive
+
+Common stage names:
+
+```bash
+# Permanent stages
+production
+staging
+development
+
+# Personal stages  
+alice
+bob-dev
+john-test
+
+# Feature stages
+feature-payments
+refactor-api
+
+# PR stages
+pr-123
+pr-456
+```
+
+<Warning>
+Avoid generic names like `test`, `dev`, `prod` if multiple people might use them. Be specific: `alice-dev`, `production`.
+</Warning>
+
+## Common stage patterns
+
+### Three-stage workflow
+
+Most teams use:
+
+1. **Development** — Personal stages for each developer
+2. **Staging** — Shared QA/testing environment
+3. **Production** — Live customer-facing environment
+
+```bash
+# Developers
+sst dev --stage alice
+sst dev --stage bob
+
+# QA team
+sst deploy --stage staging
+
+# Production
+sst deploy --stage production
+```
+
+### PR preview stages
+
+Create a stage for each pull request:
+
+```ts title="sst.config.ts"
+console: {
+  autodeploy: {
+    target(event) {
+      if (event.type === "pull_request") {
+        return { stage: `pr-${event.number}` };
+      }
+    },
+  },
+},
+```
+
+PR #123 deploys to stage `pr-123`, giving each PR its own environment.
+
+### Multi-region stages
+
+Deploy the same stage to multiple regions:
+
+```bash
+# US East
+AWS_REGION=us-east-1 sst deploy --stage production-us
+
+# EU West
+AWS_REGION=eu-west-1 sst deploy --stage production-eu
+```
+
+## Stage-specific configuration
+
+Configure stages differently in your `sst.config.ts`:
+
+```ts title="sst.config.ts"
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    removal: input.stage === "production" ? "retain" : "remove",
+    protect: input.stage === "production",
+  };
+}
+```
+
+### Stage-based resources
+
+Use different resources per stage:
+
+```ts
+const db = new sst.aws.Postgres("Database", {
+  instance: $app.stage === "production" 
+    ? "db.t4g.large" 
+    : "db.t4g.small",
+});
+```
+
+### Stage-based settings
+
+```ts
+const api = new sst.aws.Function("MyApi", {
+  handler: "src/api.handler",
+  memory: $app.stage === "production" ? "2 GB" : "512 MB",
+  timeout: $app.stage === "production" ? "30 seconds" : "10 seconds",
+  environment: {
+    LOG_LEVEL: $app.stage === "production" ? "error" : "debug",
+  },
+});
+```
+
+## Environment variables per stage
+
+Use stage-specific `.env` files:
+
+```bash title=".env.production"
+API_URL=https://api.example.com
+LOG_LEVEL=error
+```
+
+```bash title=".env.staging"
+API_URL=https://staging-api.example.com
+LOG_LEVEL=debug
+```
+
+```bash title=".env"
+API_URL=http://localhost:3000
+LOG_LEVEL=debug
+```
+
+SST loads the appropriate file based on the stage:
+
+```bash
+sst deploy --stage production # Loads .env.production
+sst deploy --stage staging    # Loads .env.staging
+sst dev                       # Loads .env
+```
+
+<Info>
+The `.env` file takes precedence over `.env.<stage>` files.
+</Info>
+
+## Secrets per stage
+
+Set different secrets for each stage:
+
+```bash
+# Development  
+sst secret set StripeKey sk_test_abc123 --stage dev
+
+# Production
+sst secret set StripeKey sk_live_xyz789 --stage production
+```
+
+Or use fallback secrets:
+
+```bash
+# All stages use this by default
+sst secret set ApiKey default-key --fallback
+
+# Production overrides with its own
+sst secret set ApiKey prod-key --stage production
+```
+
+## Switching between stages
+
+Work with multiple stages:
+
+```bash
+# Deploy to staging
+sst deploy --stage staging
+
+# Test staging
+curl https://staging.example.com
+
+# Deploy to production
+sst deploy --stage production
+
+# Test production
+curl https://example.com
+```
+
+Or keep multiple terminals open:
+
+```bash
+# Terminal 1 - Development
+sst dev
+
+# Terminal 2 - Staging tests
+sst deploy --stage staging
+
+# Terminal 3 - Production monitoring
+sst logs --stage production --tail
+```
+
+## Listing stages
+
+See all deployed stages:
+
+```bash
+sst state list
+```
+
+This shows:
+- All stages in your AWS account
+- Last updated timestamp
+- Number of resources
+
+## Removing stages
+
+Delete a stage and all its resources:
+
+```bash
+sst remove --stage old-feature
+```
+
+Based on your `removal` setting:
+
+```ts
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    removal: input.stage === "production" ? "retain" : "remove",
+  };
+}
+```
+
+Options:
+- `"remove"` — Delete everything
+- `"retain"` — Keep data resources (S3, DynamoDB), delete others
+- `"retain-all"` — Keep all resources
+
+### Automatic PR cleanup
+
+Remove PR stages automatically:
+
+```ts
+console: {
+  autodeploy: {
+    target(event) {
+      if (event.type === "pull_request") {
+        if (event.action === "removed") {
+          // This triggers removal
+          return;
+        }
+        return { stage: `pr-${event.number}` };
+      }
+    },
+  },
+},
+```
+
+When a PR closes, SST automatically removes the stage.
+
+## Protecting stages
+
+Prevent accidental removal:
+
+```ts
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    protect: input.stage === "production",
+  };
+}
+```
+
+Now `sst remove --stage production` will fail:
+
+```bash
+sst remove --stage production
+Error: Cannot remove protected stage
+```
+
+## Cost management
+
+Stages can multiply costs. Manage this by:
+
+### Use smaller resources in dev
+
+```ts
+const db = new sst.aws.Postgres("Database", {
+  instance: $app.stage === "production" ? "db.r6g.xlarge" : "db.t4g.micro",
+});
+```
+
+### Remove unused stages
+
+```bash
+# List all stages
+sst state list
+
+# Remove old ones
+sst remove --stage old-feature-branch
+sst remove --stage pr-123
+```
+
+### Set up automatic cleanup
+
+Use AWS Lambda to remove old stages:
+
+```ts
+const cleanup = new sst.aws.Cron("StageCleanup", {
+  schedule: "rate(1 day)",
+  job: "src/cleanup.handler",
+});
+```
+
+```ts title="src/cleanup.ts"
+import { SST } from "sst";
+
+export const handler = async () => {
+  // Find stages older than 7 days
+  // Run `sst remove` for each
+};
+```
+
+### Monitor costs per stage
+
+Tag resources with stage name:
+
+```ts
+const bucket = new sst.aws.Bucket("MyBucket", {
+  transform: {
+    bucket: {
+      tags: {
+        Stage: $app.stage,
+        Environment: $app.stage === "production" ? "prod" : "dev",
+      },
+    },
+  },
+});
+```
+
+Then use AWS Cost Explorer to see costs per stage.
+
+## Multi-account stages
+
+Deploy stages to different AWS accounts:
+
+### Via profiles
+
+```bash
+# Development account
+AWS_PROFILE=dev-account sst deploy --stage dev
+
+# Production account  
+AWS_PROFILE=prod-account sst deploy --stage production
+```
+
+### Via Console environments
+
+Configure in the SST Console:
+
+1. Go to app settings
+2. Add environment "production"
+3. Select production AWS account
+4. Map stage "production" to this environment
+
+Autodeploy uses the correct account automatically.
+
+## Stage comparison
+
+Compare configurations across stages:
+
+```bash
+# View staging outputs
+sst deploy --stage staging
+cat .sst/outputs.json
+
+# View production outputs
+sst deploy --stage production  
+cat .sst/outputs.json
+
+# Compare
+diff <(cat .sst/outputs.json) <(AWS_PROFILE=prod cat .sst/outputs.json)
+```
+
+## Best practices
+
+### Use consistent naming
+
+Pick a naming scheme and stick to it:
+
+```bash
+# Good - consistent
+production
+staging
+alice-dev
+bob-dev
+
+# Avoid - inconsistent
+prod
+stage
+alice
+bobDev
+```
+
+### Document your stages
+
+Document the purpose of each permanent stage:
+
+```md title="README.md"
+## Stages
+
+- `production` - Live environment (AWS account: 123456789)
+- `staging` - QA testing (AWS account: 987654321)
+- `<username>` - Personal development stages
+- `pr-<number>` - Pull request previews (auto-removed)
+```
+
+### Clean up regularly
+
+Schedule regular stage cleanup:
+
+```bash
+# Monthly cleanup day
+sst state list
+sst remove --stage old-experiment
+sst remove --stage pr-123
+```
+
+### Keep production isolated
+
+Use a separate AWS account for production:
+
+- Different credentials
+- Different IAM policies
+- Stricter access controls
+- Separate billing
+
+### Test in staging first
+
+Always deploy to staging before production:
+
+```bash
+# Deploy and test staging
+sst deploy --stage staging
+# Run tests...
+# If tests pass:
+sst deploy --stage production
+```
+
+## Troubleshooting
+
+### Wrong stage deployed
+
+If you deployed to the wrong stage:
+
+```bash
+# Remove the wrong deployment
+sst remove --stage wrong-stage
+
+# Deploy to the correct stage
+sst deploy --stage correct-stage
+```
+
+### Stage won't remove
+
+If `sst remove` fails:
+
+1. Check if stage is protected
+2. Try with `--continue` flag
+3. Manually delete stuck resources in AWS Console
+4. Run `sst unlock` if state is locked
+
+### Can't find stage
+
+If SST can't find your stage:
+
+```bash
+# List all stages
+sst state list
+
+# Verify stage name is correct
+sst deploy --stage correct-name
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Learn about deployment strategies
+  </Card>
+  <Card title="Secrets" icon="key" href="/guides/secrets-management">
+    Manage secrets per stage
+  </Card>
+  <Card title="Development Workflow" icon="code-branch" href="/guides/development-workflow">
+    Build an effective workflow
+  </Card>
+  <Card title="Console" icon="chart-line" href="/concepts/console">
+    Manage stages in the Console
+  </Card>
+</CardGroup>

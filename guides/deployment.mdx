@@ -1,0 +1,577 @@
+---
+title: Deployment
+description: Deploy your SST application to production
+---
+
+This guide covers everything you need to know about deploying SST applications to production and managing different environments.
+
+## Basic deployment
+
+Deploy your application with a single command:
+
+```bash
+sst deploy
+```
+
+By default, this deploys to your personal stage (based on your username). For production, specify a stage:
+
+```bash
+sst deploy --stage production
+```
+
+### What happens during deployment?
+
+1. **Build** — SST builds your functions, containers, and sites
+2. **Create state** — Pulumi creates a state file in your home provider
+3. **Deploy resources** — Resources are created in order based on dependencies
+4. **Update config** — Outputs are written to `.sst/outputs.json`
+
+<Info>
+The first deployment to a new stage takes longer as SST sets up infrastructure.
+</Info>
+
+## Deployment stages
+
+Stages let you deploy multiple isolated instances of your app:
+
+```bash
+# Personal development
+sst deploy --stage dev
+
+# Staging environment
+sst deploy --stage staging
+
+# Production
+sst deploy --stage production
+```
+
+Each stage:
+- Has its own resources
+- Has its own AWS account (optionally)
+- Has separate secrets and config
+- Is completely isolated from other stages
+
+### Stage naming
+
+SST automatically uses your username as the default stage. You can override this:
+
+```bash
+# Set via flag
+sst deploy --stage my-stage
+
+# Set via environment variable
+SST_STAGE=my-stage sst deploy
+
+# Set in .env
+echo "SST_STAGE=my-stage" > .env
+sst deploy
+```
+
+<Tip>
+Use consistent stage names across your team: `dev`, `staging`, `production`.
+</Tip>
+
+## Targeted deployments
+
+### Deploy specific components
+
+Deploy only certain components:
+
+```bash
+sst deploy --target MyApi
+```
+
+This only deploys `MyApi` and its dependencies.
+
+### Exclude components
+
+Skip specific components:
+
+```bash
+sst deploy --exclude MyFrontend
+```
+
+Useful when you want to deploy backend changes without rebuilding your frontend.
+
+### Multiple targets
+
+Deploy multiple specific components:
+
+```bash
+sst deploy --target MyApi,MyDatabase
+```
+
+## CI/CD deployment
+
+Deploy from your CI/CD pipeline:
+
+### GitHub Actions
+
+```yaml title=".github/workflows/deploy.yml"
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Deploy
+        run: npx sst deploy --stage production
+```
+
+### GitLab CI
+
+```yaml title=".gitlab-ci.yml"
+deploy:
+  stage: deploy
+  image: node:20
+  script:
+    - npm install
+    - npx sst deploy --stage production
+  only:
+    - main
+  variables:
+    AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+    AWS_DEFAULT_REGION: us-east-1
+```
+
+### Environment variables
+
+Set these in your CI/CD:
+
+- `AWS_ACCESS_KEY_ID` — AWS credentials
+- `AWS_SECRET_ACCESS_KEY` — AWS credentials  
+- `AWS_DEFAULT_REGION` — AWS region
+- `SST_STAGE` — Deployment stage
+- `SST_PRINT_LOGS=1` — Show detailed logs
+
+<Warning>
+Never commit AWS credentials to your repository. Use your CI/CD's secret management.
+</Warning>
+
+## Autodeploy with Console
+
+The SST Console can automatically deploy your app on git push:
+
+### Setup autodeploy
+
+1. Connect your GitHub repo to the SST Console
+2. Configure deployment triggers in `sst.config.ts`:
+
+```ts title="sst.config.ts"
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      home: "aws",
+    };
+  },
+  console: {
+    autodeploy: {
+      target(event) {
+        // Deploy main to production
+        if (
+          event.type === "branch" &&
+          event.branch === "main" &&
+          event.action === "pushed"
+        ) {
+          return { stage: "production" };
+        }
+        
+        // Deploy PRs to preview stages
+        if (event.type === "pull_request") {
+          return { stage: `pr-${event.number}` };
+        }
+      },
+    },
+  },
+  async run() {
+    // Your resources...
+  },
+});
+```
+
+3. Configure environments in the Console UI
+4. Push to your repo
+
+### Deployment triggers
+
+**Branches:**
+```ts
+if (event.type === "branch" && event.branch === "main") {
+  return { stage: "production" };
+}
+```
+
+**Pull requests:**
+```ts
+if (event.type === "pull_request") {
+  return { stage: `pr-${event.number}` };
+}
+```
+
+**Tags:**
+```ts
+if (event.type === "tag" && event.tag.startsWith("v")) {
+  return { stage: "production" };
+}
+```
+
+**Skip deployment:**
+```ts
+if (event.type === "branch" && event.branch === "staging") {
+  return; // Don't deploy
+}
+```
+
+### Runner configuration
+
+Customize the build environment:
+
+```ts
+console: {
+  autodeploy: {
+    runner(stage) {
+      // Use larger instances for production
+      if (stage === "production") {
+        return {
+          compute: "large",
+          timeout: "3 hours",
+          architecture: "arm64",
+        };
+      }
+      
+      // Default for other stages
+      return {
+        compute: "medium",
+        timeout: "1 hour",
+      };
+    },
+  },
+},
+```
+
+### Custom workflow
+
+Run custom commands during deployment:
+
+```ts
+console: {
+  autodeploy: {
+    async workflow({ $, event }) {
+      // Install dependencies
+      await $`npm i -g pnpm`;
+      await $`pnpm i`;
+      
+      // Run tests
+      const { exitCode } = await $`pnpm test`.nothrow();
+      if (exitCode !== 0) {
+        throw new Error("Tests failed");
+      }
+      
+      // Deploy or remove
+      if (event.action === "removed") {
+        await $`pnpm sst remove`;
+      } else {
+        await $`pnpm sst deploy`;
+      }
+    },
+  },
+},
+```
+
+## Build concurrency
+
+Control how many resources build concurrently:
+
+```bash
+SST_BUILD_CONCURRENCY_SITE=2 sst deploy
+```
+
+Available controls:
+
+| Resource | Default | Variable |
+|----------|---------|----------|
+| Sites | 1 | `SST_BUILD_CONCURRENCY_SITE` |
+| Functions | 4 | `SST_BUILD_CONCURRENCY_FUNCTION` |
+| Containers | 1 | `SST_BUILD_CONCURRENCY_CONTAINER` |
+
+<Tip>
+Increase concurrency on CI machines with more memory, decrease it on smaller machines.
+</Tip>
+
+## Error handling
+
+### Continue on error
+
+Deploy as many resources as possible even if some fail:
+
+```bash
+sst deploy --continue
+```
+
+Useful when deploying a large app for the first time.
+
+### Retry failed deployments
+
+If a deployment fails, fix the issue and run `sst deploy` again. SST will:
+- Skip successfully deployed resources
+- Retry failed resources
+- Continue from where it left off
+
+### Rollback
+
+SST doesn't have automatic rollbacks. To rollback:
+
+1. Checkout the previous version of your code
+2. Run `sst deploy` again
+
+Or use git:
+
+```bash
+git revert HEAD
+git push
+sst deploy --stage production
+```
+
+## Dev mode deployment
+
+Deploy in dev mode without running `sst dev`:
+
+```bash
+sst deploy --dev
+```
+
+This:
+- Deploys stub Lambda functions
+- Skips frontend deployments
+- Uses dev mode for databases (if configured)
+
+Useful for testing dev mode in CI or on a remote server.
+
+## Removal
+
+Remove all resources from a stage:
+
+```bash
+sst remove --stage staging
+```
+
+This deletes resources based on your `removal` setting:
+
+```ts title="sst.config.ts"
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    removal: input.stage === "production" ? "retain" : "remove",
+  };
+}
+```
+
+Options:
+- `"remove"` — Delete all resources
+- `"retain"` — Keep data resources (S3, DynamoDB), delete others
+- `"retain-all"` — Keep all resources
+
+<Warning>
+Be careful with `sst remove` in production. Set `protect: true` to prevent accidental removals.
+</Warning>
+
+### Protect production
+
+Prevent accidental removal:
+
+```ts
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    protect: input.stage === "production",
+  };
+}
+```
+
+Now `sst remove --stage production` will fail with an error.
+
+## Deployment outputs
+
+After deployment, SST writes outputs to `.sst/outputs.json`:
+
+```json title=".sst/outputs.json"
+{
+  "api": "https://abc123.lambda-url.us-east-1.on.aws/",
+  "bucket": "my-app-production-mybucket-a1b2c3d4"
+}
+```
+
+Use these in scripts or external tools:
+
+```ts
+import outputs from "./.sst/outputs.json";
+
+console.log("API URL:", outputs.api);
+```
+
+## Multi-region deployment
+
+Deploy to multiple regions by running `sst deploy` with different AWS credentials:
+
+```bash
+# Deploy to us-east-1
+AWS_REGION=us-east-1 sst deploy --stage production-us
+
+# Deploy to eu-west-1
+AWS_REGION=eu-west-1 sst deploy --stage production-eu
+```
+
+Or configure providers per stage:
+
+```ts
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    providers: {
+      aws: {
+        region: input.stage.includes("eu") ? "eu-west-1" : "us-east-1",
+      },
+    },
+  };
+}
+```
+
+## Best practices
+
+### Use version control
+
+Always deploy from version control:
+
+```bash
+git pull
+sst deploy --stage production
+```
+
+Never deploy local changes that aren't committed.
+
+### Test before production
+
+Deploy to staging first:
+
+```bash
+# Test in staging
+sst deploy --stage staging
+# Verify it works
+# Then deploy to production
+sst deploy --stage production
+```
+
+### Use separate AWS accounts
+
+Use different AWS accounts for production and development:
+
+- Development: Your personal AWS account
+- Staging: Shared staging AWS account  
+- Production: Production AWS account
+
+Configure this in the SST Console environment settings.
+
+### Monitor deployments
+
+Watch the deployment progress:
+
+```bash
+sst deploy --print-logs
+```
+
+This shows detailed logs including build output and deployment steps.
+
+### Tag deployments
+
+Use git tags for production deployments:
+
+```bash
+git tag v1.0.0
+git push --tags
+
+# Configure autodeploy to deploy tags
+# Or deploy manually
+sst deploy --stage production
+```
+
+## Troubleshooting
+
+### Deployment hangs
+
+If deployment hangs, check:
+
+1. Network connectivity to AWS
+2. AWS credentials are valid
+3. No rate limiting from AWS
+
+Cancel with `Ctrl+C` and retry.
+
+### Out of memory
+
+Reduce build concurrency:
+
+```bash
+SST_BUILD_CONCURRENCY_SITE=1 SST_BUILD_CONCURRENCY_FUNCTION=2 sst deploy
+```
+
+### State lock
+
+If deployment fails and leaves a lock:
+
+```bash
+sst unlock
+```
+
+This removes the state lock so you can deploy again.
+
+### Resource limits
+
+If you hit AWS resource limits, request an increase:
+
+- Lambda concurrent executions
+- CloudFormation stack limit
+- S3 bucket limit
+
+Contact AWS Support to increase limits.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Stage Management" icon="layer-group" href="/guides/stage-management">
+    Manage multiple stages
+  </Card>
+  <Card title="Secrets" icon="key" href="/guides/secrets-management">
+    Deploy with secrets
+  </Card>
+  <Card title="Console" icon="chart-line" href="/concepts/console">
+    Monitor deployments
+  </Card>
+  <Card title="CI/CD Examples" icon="github" href="https://github.com/sst/sst/tree/dev/examples">
+    View CI/CD examples
+  </Card>
+</CardGroup>

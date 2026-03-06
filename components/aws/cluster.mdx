@@ -1,0 +1,79 @@
+---
+title: Cluster
+description: Reference doc for the `sst.aws.Cluster` component.
+---
+
+The `Cluster` component lets you create an [Amazon ECS](https://aws.amazon.com/ecs/) cluster for running containerized services.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const cluster = new sst.aws.Cluster("MyCluster", {
+  vpc
+});
+```
+
+## Parameters
+
+### vpc
+
+<ParamField path="vpc" type="Vpc" required>
+  The VPC to place the cluster in.
+
+  ```ts
+  {
+    vpc: myVpc
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### name
+
+<Property type="Output<string>">
+  The cluster name.
+
+  ```ts
+  console.log(cluster.name);
+  ```
+</Property>
+
+### arn
+
+<Property type="Output<string>">
+  The cluster ARN.
+
+  ```ts
+  console.log(cluster.arn);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  #### cluster
+
+  <Property type="aws.ecs.Cluster">
+    The Amazon ECS Cluster.
+  </Property>
+</Property>
+
+## Examples
+
+### Create a cluster
+
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc");
+const cluster = new sst.aws.Cluster("MyCluster", { vpc });
+```
+
+### Add a service
+
+```ts title="sst.config.ts"
+cluster.addService("MyService", {
+  loadBalancer: {
+    ports: [{ listen: "80/http" }]
+  }
+});
+```

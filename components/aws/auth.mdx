@@ -1,0 +1,53 @@
+---
+title: Auth
+description: Reference doc for the `sst.aws.Auth` component.
+---
+
+The `Auth` component lets you add authentication to your app using [Amazon Cognito](https://aws.amazon.com/cognito/).
+
+## Constructor
+
+```ts title="sst.config.ts"
+const auth = new sst.aws.Auth("MyAuth");
+```
+
+## Parameters
+
+### authenticator
+
+<ParamField path="authenticator" type="object" required>
+  Configure the authenticator for handling authentication logic.
+
+  ```ts
+  {
+    authenticator: {
+      handler: "src/auth.handler"
+    }
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### url
+
+<Property type="Output<string>">
+  The authentication endpoint URL.
+
+  ```ts
+  console.log(auth.url);
+  ```
+</Property>
+
+## Examples
+
+### Create an auth component
+
+```ts title="sst.config.ts"
+const auth = new sst.aws.Auth("MyAuth", {
+  authenticator: {
+    handler: "src/auth.handler",
+    link: [database]
+  }
+});
+```

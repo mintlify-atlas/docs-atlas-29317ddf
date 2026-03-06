@@ -1,0 +1,522 @@
+---
+title: sst.config.ts
+description: Configure your SST application
+---
+
+The `sst.config.ts` file is the heart of your SST application. It defines your app's infrastructure, configuration, and resources.
+
+## File structure
+
+Every SST app has an `sst.config.ts` file at the project root:
+
+```ts title="sst.config.ts"
+/// <reference path="./.sst/platform/config.d.ts" />
+
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      removal: input?.stage === "production" ? "retain" : "remove",
+      home: "aws",
+    };
+  },
+  async run() {
+    // Define your resources here
+    const bucket = new sst.aws.Bucket("MyBucket");
+    
+    return {
+      bucket: bucket.name,
+    };
+  },
+});
+```
+
+The file exports a configuration object with two main parts:
+
+1. **`app()`** — App-level configuration
+2. **`run()`** — Resource definitions
+
+## The `app` function
+
+The `app` function defines your application's metadata and settings:
+
+```ts
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    removal: "retain",
+  };
+}
+```
+
+### Required fields
+
+#### `name`
+
+The name of your application. Used to prefix resource names.
+
+```ts
+{
+  name: "my-sst-app"
+}
+```
+
+<Warning>
+Changing the app name will create new resources. The old resources will be orphaned.
+</Warning>
+
+#### `home`
+
+The cloud provider where SST stores state and metadata.
+
+```ts
+{
+  home: "aws" // or "cloudflare" or "local"
+}
+```
+
+Options:
+- `"aws"` — Store state in S3 (recommended)
+- `"cloudflare"` — Store state in R2
+- `"local"` — Store state on your machine
+
+### Optional fields
+
+#### `removal`
+
+How to handle resource removal:
+
+```ts
+{
+  removal: input.stage === "production" ? "retain" : "remove"
+}
+```
+
+Options:
+- `"remove"` — Delete all resources
+- `"retain"` — Keep data resources (S3, DynamoDB), delete others
+- `"retain-all"` — Keep all resources
+
+<Tip>
+Use `"retain"` for production to prevent accidental data loss.
+</Tip>
+
+#### `providers`
+
+Configure cloud providers:
+
+```ts
+{
+  providers: {
+    aws: {
+      region: "us-west-2",
+    },
+    cloudflare: "5.37.1",
+  }
+}
+```
+
+Specify provider versions or configuration. SST automatically installs the providers.
+
+#### `version`
+
+Lock SST to a specific version:
+
+```ts
+{
+  version: "3.2.49" // or ">= 3.2.49"
+}
+```
+
+Prevents accidental upgrades in CI/CD.
+
+#### `protect`
+
+Prevent `sst remove` from running:
+
+```ts
+{
+  protect: input.stage === "production"
+}
+```
+
+Useful for protecting production stages.
+
+#### `watch`
+
+Limit which directories SST watches in dev mode:
+
+```ts
+{
+  watch: ["packages/functions", "packages/core"]
+}
+```
+
+### Input parameter
+
+The `app` function receives an `input` object with:
+
+- **`stage`** — The current stage (from `--stage` flag)
+
+```ts
+app(input) {
+  console.log(input.stage); // "dev", "production", etc.
+  
+  return {
+    name: "my-app",
+    home: "aws",
+    removal: input.stage === "production" ? "retain" : "remove",
+  };
+}
+```
+
+## The `run` function
+
+The `run` function defines your infrastructure:
+
+```ts
+async run() {
+  // Create resources
+  const bucket = new sst.aws.Bucket("MyBucket");
+  const table = new sst.aws.Dynamo("MyTable", {
+    fields: { id: "string" },
+    primaryIndex: { hashKey: "id" },
+  });
+  
+  const api = new sst.aws.Function("MyApi", {
+    handler: "src/api.handler",
+    link: [bucket, table],
+    url: true,
+  });
+  
+  // Return outputs
+  return {
+    api: api.url,
+    bucket: bucket.name,
+  };
+}
+```
+
+### Creating resources
+
+Create SST components and Pulumi resources:
+
+```ts
+// SST components
+const bucket = new sst.aws.Bucket("MyBucket");
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+});
+
+// Pulumi resources
+import * as aws from "@pulumi/aws";
+const table = new aws.dynamodb.Table("MyTable", {
+  attributes: [{ name: "id", type: "S" }],
+  hashKey: "id",
+});
+```
+
+### Returning outputs
+
+Return values to display after deployment:
+
+```ts
+return {
+  api: api.url,
+  bucket: bucket.name,
+  region: aws.getRegionOutput().name,
+};
+```
+
+These appear in the terminal:
+
+```bash frame="none"
+✓  Complete
+   api: https://abc123.lambda-url.us-east-1.on.aws/
+   bucket: my-app-dev-mybucket-a1b2c3d4
+   region: us-east-1
+```
+
+And are written to `.sst/outputs.json`:
+
+```json title=".sst/outputs.json"
+{
+  "api": "https://abc123.lambda-url.us-east-1.on.aws/",
+  "bucket": "my-app-dev-mybucket-a1b2c3d4",
+  "region": "us-east-1"
+}
+```
+
+## Global variables
+
+SST provides global variables in your config:
+
+### `$dev`
+
+Check if running in dev mode:
+
+```ts
+if ($dev) {
+  // Only in sst dev
+}
+```
+
+### `$app`
+
+Access app configuration:
+
+```ts
+console.log($app.name);   // "my-app"
+console.log($app.stage);  // "dev"
+console.log($app.region); // "us-east-1"
+```
+
+### `$config`
+
+The function to define your config:
+
+```ts
+export default $config({
+  // ...
+});
+```
+
+## Environment variables
+
+Load `.env` files automatically:
+
+```bash title=".env"
+API_KEY=abc123
+DATABASE_URL=postgresql://...
+```
+
+Access them in your config:
+
+```ts
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  environment: {
+    API_KEY: process.env.API_KEY!,
+  },
+});
+```
+
+### Stage-specific env files
+
+Use `.env.<stage>` for stage-specific values:
+
+```bash title=".env.production"
+API_KEY=xyz789
+```
+
+<Info>
+The `.env` file takes precedence over `.env.<stage>`.
+</Info>
+
+## Console configuration
+
+Configure the SST Console:
+
+```ts
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      home: "aws",
+    };
+  },
+  console: {
+    autodeploy: {
+      target(event) {
+        if (event.type === "branch" && event.branch === "main") {
+          return { stage: "production" };
+        }
+      },
+      runner: {
+        compute: "large",
+        timeout: "3 hours",
+      },
+    },
+  },
+  async run() {
+    // ...
+  },
+});
+```
+
+See [Console documentation](/concepts/console) for full details.
+
+## TypeScript configuration
+
+SST requires TypeScript 5+. Create a `tsconfig.json`:
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true
+  }
+}
+```
+
+<Tip>
+The reference comment at the top of `sst.config.ts` provides type definitions for SST globals.
+</Tip>
+
+## Organizing large configs
+
+### Extract resources
+
+Split resources into separate files:
+
+```ts title="infra/storage.ts"
+export function createStorage() {
+  const bucket = new sst.aws.Bucket("MyBucket");
+  const table = new sst.aws.Dynamo("MyTable", {
+    fields: { id: "string" },
+    primaryIndex: { hashKey: "id" },
+  });
+  
+  return { bucket, table };
+}
+```
+
+```ts title="sst.config.ts"
+import { createStorage } from "./infra/storage";
+
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      home: "aws",
+    };
+  },
+  async run() {
+    const storage = createStorage();
+    // Use storage.bucket, storage.table...
+  },
+});
+```
+
+### Use helper functions
+
+Create reusable helpers:
+
+```ts title="infra/helpers.ts"
+export function createApiFunction(
+  name: string,
+  handler: string,
+  links: any[]
+) {
+  return new sst.aws.Function(name, {
+    handler,
+    link: links,
+    url: true,
+    environment: {
+      NODE_ENV: $app.stage === "production" ? "production" : "development",
+    },
+  });
+}
+```
+
+## Custom config path
+
+Use a different config file:
+
+```bash
+sst --config infra/sst.config.ts deploy
+```
+
+Useful for monorepos with multiple SST apps.
+
+## Best practices
+
+### Use stages for environments
+
+Handle different environments with stages:
+
+```ts
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    removal: input.stage === "production" ? "retain" : "remove",
+    providers: {
+      aws: {
+        region: input.stage === "production" ? "us-east-1" : "us-west-2",
+      },
+    },
+  };
+}
+```
+
+### Keep secrets out of config
+
+Use `sst.Secret` instead of hardcoding:
+
+```ts
+// Good
+const secret = new sst.Secret("ApiKey");
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  link: [secret],
+});
+
+// Avoid
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  environment: {
+    API_KEY: "hardcoded-secret", // Don't do this!
+  },
+});
+```
+
+### Use meaningful resource names
+
+Name resources descriptively:
+
+```ts
+// Good
+const userBucket = new sst.aws.Bucket("UserUploadsBucket");
+const orderTable = new sst.aws.Dynamo("OrdersTable");
+
+// Avoid
+const bucket1 = new sst.aws.Bucket("Bucket1");
+const table = new sst.aws.Dynamo("Table");
+```
+
+### Document complex logic
+
+Add comments for non-obvious configurations:
+
+```ts
+// Use smaller instances in dev to save costs
+const size = $app.stage === "production" ? "large" : "small";
+
+const db = new sst.aws.Postgres("Database", {
+  instance: `db.t4g.${size}`,
+});
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Components" icon="cubes" href="/concepts/components">
+    Learn about SST components
+  </Card>
+  <Card title="Providers" icon="plug" href="/guides/providers">
+    Add cloud providers
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy your application
+  </Card>
+  <Card title="Examples" icon="code" href="https://github.com/sst/sst/tree/dev/examples">
+    Browse example configs
+  </Card>
+</CardGroup>

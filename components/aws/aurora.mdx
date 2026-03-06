@@ -1,0 +1,126 @@
+---
+title: Aurora
+description: Reference doc for the `sst.aws.Aurora` component.
+---
+
+The `Aurora` component lets you add an [Amazon Aurora Serverless v2](https://aws.amazon.com/rds/aurora/serverless/) database cluster to your app.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const database = new sst.aws.Aurora("MyDatabase");
+```
+
+## Parameters
+
+### vpc
+
+<ParamField path="vpc" type="Vpc" required>
+  The VPC to place the database cluster in.
+
+  ```ts
+  {
+    vpc: myVpc
+  }
+  ```
+</ParamField>
+
+### engine
+
+<ParamField path="engine" type="string" default="postgres">
+  The database engine. Either `"postgres"` or `"mysql"`.
+
+  ```ts
+  {
+    engine: "mysql"
+  }
+  ```
+</ParamField>
+
+### version
+
+<ParamField path="version" type="string">
+  The database engine version.
+
+  ```ts
+  {
+    version: "15.4"
+  }
+  ```
+</ParamField>
+
+### scaling
+
+<ParamField path="scaling" type="object">
+  Configure autoscaling for the Aurora Serverless cluster.
+
+  ```ts
+  {
+    scaling: {
+      min: "0.5 ACU",
+      max: "4 ACU"
+    }
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### clusterEndpoint
+
+<Property type="Output<string>">
+  The cluster endpoint.
+
+  ```ts
+  console.log(database.clusterEndpoint);
+  ```
+</Property>
+
+### port
+
+<Property type="Output<number>">
+  The database port.
+
+  ```ts
+  console.log(database.port);
+  ```
+</Property>
+
+### database
+
+<Property type="Output<string>">
+  The database name.
+
+  ```ts
+  console.log(database.database);
+  ```
+</Property>
+
+## SDK
+
+Access the database connection info:
+
+```ts title="src/lambda.ts"
+import { Resource } from "sst";
+
+console.log(Resource.MyDatabase.clusterEndpoint);
+```
+
+## Examples
+
+### Create an Aurora cluster
+
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc");
+const database = new sst.aws.Aurora("MyDatabase", { vpc });
+```
+
+### Configure MySQL
+
+```ts title="sst.config.ts"
+new sst.aws.Aurora("MyDatabase", {
+  vpc,
+  engine: "mysql",
+  version: "8.0.mysql_aurora.3.05.2"
+});
+```

@@ -1,0 +1,99 @@
+---
+title: Vpc
+description: Reference doc for the `sst.aws.Vpc` component.
+---
+
+The `Vpc` component lets you add an [Amazon VPC](https://docs.aws.amazon.com/vpc/) to your app.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc");
+```
+
+## Parameters
+
+### nat
+
+<ParamField path="nat" type="string" default="managed">
+  Configure the NAT gateway for private subnets.
+
+  ```ts
+  {
+    nat: "ec2"
+  }
+  ```
+
+  Options: `"managed"` (AWS NAT Gateway), `"ec2"` (EC2-based NAT), or `"none"`.
+</ParamField>
+
+## Properties
+
+### id
+
+<Property type="Output<string>">
+  The VPC ID.
+
+  ```ts
+  console.log(vpc.id);
+  ```
+</Property>
+
+### publicSubnets
+
+<Property type="Output<string[]>">
+  List of public subnet IDs.
+
+  ```ts
+  console.log(vpc.publicSubnets);
+  ```
+</Property>
+
+### privateSubnets
+
+<Property type="Output<string[]>">
+  List of private subnet IDs.
+
+  ```ts
+  console.log(vpc.privateSubnets);
+  ```
+</Property>
+
+### securityGroups
+
+<Property type="Output<string[]>">
+  List of security group IDs.
+
+  ```ts
+  console.log(vpc.securityGroups);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  #### vpc
+
+  <Property type="aws.ec2.Vpc">
+    The Amazon VPC.
+  </Property>
+</Property>
+
+## Examples
+
+### Connect a function to a VPC
+
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc");
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  vpc
+});
+```
+
+### Reference an existing VPC
+
+```ts title="sst.config.ts"
+const vpc = sst.aws.Vpc.get("MyVpc", "vpc-12345678901234567");
+```

@@ -1,0 +1,122 @@
+---
+title: sst refresh
+description: Reference doc for the `sst refresh` command.
+---
+
+Compares your local state with the state of the resources in the cloud provider. Any changes that are found are adopted into your local state.
+
+```bash
+sst refresh
+```
+
+It will:
+
+1. Go through every single resource in your state.
+2. Make a call to the cloud provider to check the resource.
+   - If the configs are different, it'll **update the state** to reflect the change.
+   - If the resource doesn't exist anymore, it'll **remove it from the state**.
+
+<Note>
+The `sst refresh` does not make changes to the resources in the cloud provider.
+</Note>
+
+By default, this refreshes the stage as it would be deployed using `sst deploy`. If the stage was deployed using `sst dev`, use the `--dev` flag.
+
+This is useful for cases where you want to ensure that your local state is in sync with your cloud provider. [Learn more about how state works](/docs/providers/#how-state-works).
+
+## Options
+
+### `--dev`
+
+Refresh the dev version of this stage.
+
+```bash
+sst refresh --dev
+```
+
+If your stage was deployed using `sst dev`, use this flag to refresh the dev state.
+
+### `--target`
+
+Only run it for the given component.
+
+```bash
+sst refresh --target MyComponent
+```
+
+Refresh only a specific component.
+
+### `--exclude`
+
+Exclude the specified component from the operation.
+
+```bash
+sst refresh --exclude MyComponent
+```
+
+Refresh everything except a specific component.
+
+## Examples
+
+### Refresh all resources
+
+Refresh the entire app state:
+
+```bash
+sst refresh
+```
+
+### Refresh dev stage
+
+If you deployed with `sst dev`:
+
+```bash
+sst refresh --dev
+```
+
+### Refresh a specific component
+
+Refresh only one component:
+
+```bash
+sst refresh --target MyComponent
+```
+
+### Refresh everything except a component
+
+Exclude a component from refresh:
+
+```bash
+sst refresh --exclude MyComponent
+```
+
+### Refresh production
+
+Refresh your production stage:
+
+```bash
+sst refresh --stage production
+```
+
+## When to use refresh
+
+You should run `sst refresh` when:
+
+- You've made manual changes to resources in your cloud provider console
+- Someone else has modified resources outside of SST
+- Your state might be out of sync with reality
+- You want to detect drift between your state and actual infrastructure
+
+## How it differs from deploy
+
+Unlike `sst deploy`, the `refresh` command:
+
+- **Does not** create, update, or delete resources
+- **Only updates** your local state to match reality
+- **Detects drift** between state and actual infrastructure
+
+## Related
+
+- [`sst deploy`](/docs/reference/cli/deploy) - Deploy your application
+- [`sst unlock`](/docs/reference/cli/unlock) - Clear locks on app state
+- [State documentation](/docs/state) - Learn more about SST state

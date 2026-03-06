@@ -1,0 +1,134 @@
+---
+title: sst deploy
+description: Reference doc for the `sst deploy` command.
+---
+
+Deploy your application. By default, it deploys to your personal stage.
+
+You typically want to deploy it to a specific stage:
+
+```bash
+sst deploy --stage production
+```
+
+## How it works
+
+All the resources are deployed as concurrently as possible, based on their dependencies. For resources like your container images, sites, and functions; it first builds them and then deploys the generated assets.
+
+Since the build processes for some of these resources take a lot of memory, their concurrency is limited by default. However, this can be configured.
+
+| Resource | Concurrency | Flag |
+| -------- | ----------- | ---- |
+| Sites | 1 | `SST_BUILD_CONCURRENCY_SITE` |
+| Functions | 4 | `SST_BUILD_CONCURRENCY_FUNCTION` |
+| Containers | 1 | `SST_BUILD_CONCURRENCY_CONTAINER` |
+
+So only one site is built at a time, 4 functions are built at a time, and only 1 container is built at a time.
+
+You can set the above environment variables to change this when you run `sst deploy`. This is useful for CI environments where you want to control this based on how much memory your CI machine has.
+
+For example, to build a maximum of 2 sites concurrently:
+
+```bash
+SST_BUILD_CONCURRENCY_SITE=2 sst deploy
+```
+
+Or to configure all these together:
+
+```bash
+SST_BUILD_CONCURRENCY_SITE=2 SST_BUILD_CONCURRENCY_CONTAINER=2 SST_BUILD_CONCURRENCY_FUNCTION=8 sst deploy
+```
+
+## Options
+
+### `--target`
+
+Only run it for the given component.
+
+```bash
+sst deploy --target MyComponent
+```
+
+### `--exclude`
+
+Exclude the specified component from the operation.
+
+```bash
+sst deploy --exclude MyComponent
+```
+
+### `--continue`
+
+Typically, this command exits when there's an error deploying a resource. But sometimes you want to be able to continue deploying as many resources as possible:
+
+```bash
+sst deploy --continue
+```
+
+This is useful when deploying a new stage with a lot of resources. You want to be able to deploy as many resources as possible and then come back and fix the errors.
+
+### `--dev`
+
+The `sst dev` command deploys your resources a little differently. It skips deploying resources that are going to be run locally. Sometimes you want to deploy a personal stage without starting `sst dev`.
+
+```bash
+sst deploy --dev
+```
+
+The `--dev` flag will deploy your resources as if you were running `sst dev`.
+
+### `--policy`
+
+Run policy pack validation against the preview changes.
+
+```bash
+sst deploy --policy ./policies/production
+```
+
+## Examples
+
+### Deploy to production
+
+```bash
+sst deploy --stage production
+```
+
+### Deploy with policy validation
+
+```bash
+sst deploy --stage production --policy ./policies/production
+```
+
+### Deploy a specific component
+
+```bash
+sst deploy --target MyComponent
+```
+
+### Deploy everything except a component
+
+```bash
+sst deploy --exclude MyComponent
+```
+
+### Continue on error
+
+Deploy as many resources as possible even if some fail:
+
+```bash
+sst deploy --continue
+```
+
+### Deploy in dev mode
+
+Deploy resources as `sst dev` would:
+
+```bash
+sst deploy --dev
+```
+
+## Related
+
+- [`sst dev`](/docs/reference/cli/dev) - Run your app in development mode
+- [`sst remove`](/docs/reference/cli/remove) - Remove your deployed app
+- [`sst refresh`](/docs/reference/cli/refresh) - Refresh your app state

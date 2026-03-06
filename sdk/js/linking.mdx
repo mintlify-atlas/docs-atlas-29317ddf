@@ -1,0 +1,319 @@
+---
+title: "Linking (JS/TS)"
+description: "Link resources in your infrastructure code"
+---
+
+Linking allows you to connect resources in your infrastructure code and access them at runtime with full type safety.
+
+## Basic Linking
+
+Use the `link` property to connect resources to functions:
+
+```typescript sst.config.ts
+const bucket = new sst.aws.Bucket("MyBucket");
+const table = new sst.aws.Dynamo("MyTable", {
+  fields: { id: "string" },
+  primaryIndex: { hashKey: "id" }
+});
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  link: [bucket, table]
+});
+```
+
+Now access them in your function:
+
+```typescript src/lambda.ts
+import { Resource } from "sst";
+
+export const handler = async () => {
+  console.log(Resource.MyBucket.name);
+  console.log(Resource.MyTable.name);
+};
+```
+
+## What Gets Linked
+
+When you link a resource, SST exposes specific properties based on the resource type:
+
+### Bucket
+
+```typescript
+Resource.MyBucket.name // The S3 bucket name
+```
+
+### DynamoDB Table
+
+```typescript
+Resource.MyTable.name // The table name
+```
+
+### API Gateway
+
+```typescript
+Resource.MyApi.url // The API URL
+```
+
+### Function
+
+```typescript
+Resource.MyFunction.name // Function name
+```
+
+### Queue
+
+```typescript
+Resource.MyQueue.url // SQS queue URL
+```
+
+### Secrets
+
+```typescript
+Resource.MySecret.value // The secret value
+```
+
+## Permissions
+
+Linking automatically grants the necessary IAM permissions:
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  link: [bucket]
+  // Automatically gets s3:GetObject, s3:PutObject, etc.
+});
+```
+
+### Custom Permissions
+
+You can customize permissions when linking:
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  link: [bucket],
+  permissions: [
+    {
+      actions: ["s3:GetObject"],
+      resources: [bucket.arn]
+    }
+  ]
+});
+```
+
+## Type Safety
+
+Linked resources provide full TypeScript support:
+
+```typescript
+import { Resource } from "sst";
+
+// ✓ TypeScript knows these properties exist
+const name = Resource.MyBucket.name;
+const url = Resource.MyApi.url;
+
+// ✗ TypeScript error - property doesn't exist
+const invalid = Resource.MyBucket.invalidProperty;
+
+// ✗ TypeScript error - resource not linked
+const unlinked = Resource.UnlinkedResource;
+```
+
+## Linking to Multiple Resources
+
+You can link the same resources to multiple functions:
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Function("Upload", {
+  handler: "src/upload.handler",
+  link: [bucket]
+});
+
+new sst.aws.Function("Process", {
+  handler: "src/process.handler",
+  link: [bucket]
+});
+```
+
+Or link many resources to one function:
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+const table = new sst.aws.Dynamo("MyTable", { /* ... */ });
+const queue = new sst.aws.Queue("MyQueue");
+
+new sst.aws.Function("Worker", {
+  handler: "src/worker.handler",
+  link: [bucket, table, queue]
+});
+```
+
+## Linking Secrets
+
+Secrets are linked the same way:
+
+```typescript
+const secret = new sst.Secret("StripeKey");
+
+new sst.aws.Function("Payment", {
+  handler: "src/payment.handler",
+  link: [secret]
+});
+```
+
+Access the value at runtime:
+
+```typescript
+import { Resource } from "sst";
+
+const apiKey = Resource.StripeKey.value;
+```
+
+## Linking to Other Components
+
+Many components support linking:
+
+### API Routes
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+
+const api = new sst.aws.ApiGatewayV2("MyApi");
+api.route("GET /", {
+  handler: "src/api.handler",
+  link: [bucket]
+});
+```
+
+### Cron Jobs
+
+```typescript
+const table = new sst.aws.Dynamo("MyTable", { /* ... */ });
+
+new sst.aws.Cron("DailyJob", {
+  schedule: "rate(1 day)",
+  job: {
+    handler: "src/cron.handler",
+    link: [table]
+  }
+});
+```
+
+### Queues
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+const queue = new sst.aws.Queue("MyQueue");
+
+queue.subscribe({
+  handler: "src/worker.handler",
+  link: [bucket]
+});
+```
+
+## App Metadata
+
+Every function automatically has access to app metadata:
+
+```typescript
+import { Resource } from "sst";
+
+console.log(Resource.App.name);  // Your app name
+console.log(Resource.App.stage); // Current stage
+```
+
+No need to link it explicitly.
+
+## Custom Linkable
+
+You can make any resource linkable using `sst.Linkable.wrap`:
+
+```typescript
+const customResource = sst.Linkable.wrap({
+  type: "MyCustomType",
+  properties: {
+    apiUrl: "https://api.example.com",
+    apiKey: "secret-key"
+  }
+});
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  link: [customResource]
+});
+```
+
+Access it like any other resource:
+
+```typescript
+import { Resource } from "sst";
+
+const url = Resource.customResource.apiUrl;
+const key = Resource.customResource.apiKey;
+```
+
+## Best Practices
+
+### Link What You Need
+
+Only link resources that a function actually uses:
+
+```typescript
+// ✓ Good - only links what's needed
+new sst.aws.Function("GetUser", {
+  handler: "src/get-user.handler",
+  link: [usersTable] // Only needs the users table
+});
+
+// ✗ Avoid - links unnecessary resources
+new sst.aws.Function("GetUser", {
+  handler: "src/get-user.handler",
+  link: [usersTable, ordersTable, productsTable] // Over-permissioned
+});
+```
+
+### Use Descriptive Names
+
+Name your resources clearly:
+
+```typescript
+// ✓ Good - clear purpose
+const uploadsbucket = new sst.aws.Bucket("UploadsButton");
+const usersTable = new sst.aws.Dynamo("UsersTable", { /* ... */ });
+
+// ✗ Avoid - generic names
+const bucket1 = new sst.aws.Bucket("Bucket1");
+const table = new sst.aws.Dynamo("Table", { /* ... */ });
+```
+
+### Organize by Domain
+
+Group related resources:
+
+```typescript
+// Users domain
+const usersTable = new sst.aws.Dynamo("UsersTable", { /* ... */ });
+const usersApi = new sst.aws.ApiGatewayV2("UsersApi");
+
+// Orders domain  
+const ordersTable = new sst.aws.Dynamo("OrdersTable", { /* ... */ });
+const ordersQueue = new sst.aws.Queue("OrdersQueue");
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Resource API" icon="database" href="/sdk/js/resource">
+    Access linked resources at runtime
+  </Card>
+  <Card title="Linking Concept" icon="link" href="/concepts/linking">
+    Deep dive into how linking works
+  </Card>
+</CardGroup>

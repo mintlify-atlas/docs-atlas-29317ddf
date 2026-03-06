@@ -1,122 +1,184 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "SST",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#d4d4e4",
+    "light": "#8c9495",
+    "dark": "#1d1d2d"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/d7e1cabc-0f06-45f6-98f8-6db042d38263.jpg",
+  "logo": {
+    "light": "https://media.brand.dev/fade8e8e-722a-4648-99d6-2b0e1e0f6b16.svg",
+    "dark": "https://media.brand.dev/fade8e8e-722a-4648-99d6-2b0e1e0f6b16.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/anomalyco/sst"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/anomalyco/sst"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "installation"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/components",
+              "concepts/linking",
+              "concepts/live-development",
+              "concepts/console",
+              "concepts/config"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/deployment",
+              "guides/development-workflow",
+              "guides/secrets-management",
+              "guides/stage-management",
+              "guides/providers"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Components",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "components/overview"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "AWS",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "components/aws/function",
+              "components/aws/bucket",
+              "components/aws/nextjs",
+              "components/aws/remix",
+              "components/aws/astro",
+              "components/aws/apigatewayv2",
+              "components/aws/router",
+              "components/aws/queue",
+              "components/aws/dynamo",
+              "components/aws/postgres",
+              "components/aws/aurora",
+              "components/aws/cluster",
+              "components/aws/service",
+              "components/aws/vpc",
+              "components/aws/auth",
+              "components/aws/realtime"
+            ]
+          },
+          {
+            "group": "Cloudflare",
+            "pages": [
+              "components/cloudflare/worker",
+              "components/cloudflare/bucket",
+              "components/cloudflare/kv",
+              "components/cloudflare/d1",
+              "components/cloudflare/queue"
+            ]
+          },
+          {
+            "group": "Vercel",
+            "pages": [
+              "components/vercel/overview"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "cli/overview"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/init",
+              "cli/dev",
+              "cli/deploy",
+              "cli/add",
+              "cli/install",
+              "cli/secret",
+              "cli/shell",
+              "cli/remove",
+              "cli/refresh",
+              "cli/unlock",
+              "cli/upgrade"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "cli/config"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "SDK Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "sdk/overview"
+            ]
+          },
+          {
+            "group": "JavaScript/TypeScript",
+            "pages": [
+              "sdk/js/resource",
+              "sdk/js/linking",
+              "sdk/js/auth"
+            ]
+          },
+          {
+            "group": "Python",
+            "pages": [
+              "sdk/python/resource",
+              "sdk/python/linking"
+            ]
+          },
+          {
+            "group": "Go",
+            "pages": [
+              "sdk/go/resource",
+              "sdk/go/linking"
+            ]
+          },
+          {
+            "group": "Rust",
+            "pages": [
+              "sdk/rust/resource",
+              "sdk/rust/linking"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

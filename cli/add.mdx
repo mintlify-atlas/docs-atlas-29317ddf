@@ -1,0 +1,93 @@
+---
+title: sst add
+description: Reference doc for the `sst add` command.
+---
+
+Adds and installs the given provider. For example:
+
+```bash
+sst add aws
+```
+
+This command will:
+
+1. Install the package for the AWS provider.
+2. Add `aws` to the globals in your `sst.config.ts`.
+3. And, add it to your `providers`:
+
+```ts title="sst.config.ts"
+{
+  providers: {
+    aws: "6.27.0"
+  }
+}
+```
+
+You can use any provider listed in the [Directory](/docs/all-providers#directory).
+
+<Note>
+Running `sst add aws` above is the same as manually adding the provider to your config and running `sst install`.
+</Note>
+
+By default, the latest version of the provider is installed. If you want to use a specific version, you can change it in your config:
+
+```ts title="sst.config.ts"
+{
+  providers: {
+    aws: {
+      version: "6.26.0"
+    }
+  }
+}
+```
+
+You'll need to run `sst install` if you update the `providers` in your config.
+
+## Arguments
+
+### `provider`
+
+<ParamField body="provider" type="string" required>
+  The provider to add.
+</ParamField>
+
+The name of the provider to add, for example `aws`, `cloudflare`, `vercel`, etc.
+
+```bash
+sst add cloudflare
+```
+
+## Custom registries
+
+By default, these packages are fetched from the NPM registry. If you want to use a different registry, you can set the `NPM_REGISTRY` environment variable:
+
+```bash
+NPM_REGISTRY=https://my-registry.com sst add aws
+```
+
+You can also set the registry in your `.npmrc` file. If your registry requires authentication, SST supports `_authToken`, `_auth`, and `username`/`_password` from `.npmrc`.
+
+## Examples
+
+### Add AWS provider
+
+```bash
+sst add aws
+```
+
+### Add Cloudflare provider
+
+```bash
+sst add cloudflare
+```
+
+### Add from custom registry
+
+```bash
+NPM_REGISTRY=https://my-registry.com sst add aws
+```
+
+## Related
+
+- [`sst install`](/docs/reference/cli/install) - Install all providers
+- [`sst init`](/docs/reference/cli/init) - Initialize a new project

@@ -1,0 +1,156 @@
+---
+title: sst dev
+description: Reference doc for the `sst dev` command.
+---
+
+Run your app in dev mode. By default, this starts a multiplexer with processes that deploy your app, run your functions, and start your frontend.
+
+```bash
+sst dev
+```
+
+<Note>
+The tabbed terminal UI is only available on Linux/macOS and WSL.
+</Note>
+
+## How it works
+
+Each process is run in a separate tab that you can click on in the sidebar.
+
+![sst dev multiplexer mode](../../../../assets/docs/cli/sst-dev-multiplexer-mode.png)
+
+The multiplexer makes it so that you won't have to start your frontend or your container applications separately.
+
+Here's what happens when you run `sst dev`:
+
+- Deploy most of your resources as-is.
+- Except for components that have a `dev` prop:
+  - `Function` components are run [_Live_](/docs/live/) in the **Functions** tab.
+  - `Task` components have their _stub_ versions deployed that proxy the task and run their `dev.command` in the **Tasks** tab.
+  - Frontends like `Nextjs`, `Remix`, `Astro`, `StaticSite`, etc. have their dev servers started in a separate tab and are not deployed.
+  - `Service` components are not deployed, and instead their `dev.command` is started in a separate tab.
+  - `Postgres`, `Aurora`, and `Redis` link to a local database if the `dev` prop is set.
+- Start an [`sst tunnel`](/docs/reference/cli/tunnel) session in a new tab if your app has a `Vpc` with `bastion` enabled.
+- Load any [linked resources](/docs/linking) in the environment.
+- Start a watcher for your `sst.config.ts` and redeploy any changes.
+
+<Note>
+The `Service` component and the frontends like `Nextjs` or `StaticSite` are not deployed by `sst dev`.
+</Note>
+
+## Modes
+
+### Multiplexer mode (default)
+
+By default, `sst dev` runs in multiplexer mode with a tabbed terminal UI. This is the recommended mode for development.
+
+```bash
+sst dev
+```
+
+### Mono mode
+
+Disable the tabbed terminal UI by running `sst dev` in mono mode.
+
+```bash
+sst dev --mode=mono
+```
+
+Unlike `basic` mode, this'll spawn child processes. But instead of a tabbed UI it'll show their outputs in a single stream.
+
+This is used by default in Windows.
+
+### Basic mode
+
+You can disable the multiplexer and not spawn any child processes by running `sst dev` in basic mode.
+
+```bash
+sst dev --mode=basic
+```
+
+This will only deploy your app and run your functions. If you are coming from SST v2, this is how `sst dev` used to work.
+
+However in `basic` mode, you'll need to start your frontend separately by running `sst dev` in a separate terminal session by passing in the command. For example:
+
+```bash
+sst dev next dev
+```
+
+By wrapping your command, it'll load your [linked resources](/docs/linking) in the environment.
+
+## Running commands
+
+You can wrap commands with `sst dev` to run them with your linked resources loaded.
+
+```bash
+sst dev next dev
+```
+
+To pass in a flag to the command, use `--`:
+
+```bash
+sst dev -- next dev --turbo
+```
+
+## Options
+
+### `--mode`
+
+Defaults to using `multi` mode. Use `mono` to get a single stream of all child process logs or `basic` to not spawn any child processes.
+
+```bash
+sst dev --mode=mono
+```
+
+```bash
+sst dev --mode=basic
+```
+
+### `--policy`
+
+Run policy pack validation against the preview changes.
+
+```bash
+sst dev --policy ./policies/dev
+```
+
+## Arguments
+
+### `command`
+
+The command to run with linked resources loaded.
+
+```bash
+sst dev next dev
+```
+
+## Examples
+
+### Start your entire app
+
+Brings up your entire app - should be all you need:
+
+```bash
+sst dev
+```
+
+### Run a command with resources
+
+Start a command connected to a running sst dev session:
+
+```bash
+sst dev next dev
+```
+
+### Pass flags to the command
+
+Use `--` to pass flags to the command:
+
+```bash
+sst dev -- next dev --turbo
+```
+
+## Related
+
+- [`sst deploy`](/docs/reference/cli/deploy) - Deploy your app to production
+- [`sst shell`](/docs/reference/cli/shell) - Run scripts with linked resources

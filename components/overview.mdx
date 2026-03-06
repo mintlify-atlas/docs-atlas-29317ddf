@@ -1,0 +1,128 @@
+---
+title: Components Overview
+description: SST components for deploying your app to AWS and other cloud providers.
+---
+
+SST components are high-level building blocks that help you deploy your applications to AWS and other cloud providers. They handle the underlying infrastructure complexity while exposing simple, type-safe interfaces.
+
+## What are Components?
+
+Components are TypeScript/JavaScript classes that create and configure cloud resources. Each component:
+
+- **Creates infrastructure** - Provisions and configures cloud resources
+- **Manages state** - Tracks resource state through Pulumi
+- **Provides linking** - Connect resources together with type-safe references
+- **Handles deployment** - Deploys your code and infrastructure together
+
+## Available Components
+
+### AWS Components
+
+Deploy serverless applications and infrastructure on AWS:
+
+- **[Function](/docs/components/aws/function)** - Deploy Lambda functions
+- **[Bucket](/docs/components/aws/bucket)** - Create S3 buckets for storage
+- **[Queue](/docs/components/aws/queue)** - Add SQS queues for messaging
+- **[Dynamo](/docs/components/aws/dynamo)** - Create DynamoDB tables
+- **[ApiGatewayV2](/docs/components/aws/apigatewayv2)** - Create HTTP APIs
+- **[Nextjs](/docs/components/aws/nextjs)** - Deploy Next.js applications
+- **[Remix](/docs/components/aws/remix)** - Deploy Remix applications
+- **[Astro](/docs/components/aws/astro)** - Deploy Astro sites
+- **[Cluster](/docs/components/aws/cluster)** - Deploy containerized services
+- **[Service](/docs/components/aws/service)** - Deploy ECS services
+- **[Vpc](/docs/components/aws/vpc)** - Create virtual private clouds
+- **[Postgres](/docs/components/aws/postgres)** - Create RDS Postgres databases
+- **[Aurora](/docs/components/aws/aurora)** - Create Aurora Serverless clusters
+- **[Auth](/docs/components/aws/auth)** - Add authentication with Cognito
+- **[Realtime](/docs/components/aws/realtime)** - Add WebSocket support
+- **[Router](/docs/components/aws/router)** - Create CloudFront distributions
+
+### Cloudflare Components
+
+Deploy to Cloudflare's edge network:
+
+- **[Worker](/docs/components/cloudflare/worker)** - Deploy Cloudflare Workers
+- **[Bucket](/docs/components/cloudflare/bucket)** - Use R2 object storage
+- **[Kv](/docs/components/cloudflare/kv)** - Use Workers KV
+- **[D1](/docs/components/cloudflare/d1)** - Use D1 SQL database
+- **[Queue](/docs/components/cloudflare/queue)** - Use Cloudflare Queues
+
+### Vercel
+
+Deploy to Vercel:
+
+- **[Vercel](/docs/components/vercel/overview)** - Deploy to Vercel
+
+## Using Components
+
+### Basic Usage
+
+Create components in your `sst.config.ts`:
+
+```ts title="sst.config.ts"
+export default $config({
+  async run() {
+    const bucket = new sst.aws.Bucket("MyBucket");
+    const api = new sst.aws.Function("MyApi", {
+      handler: "src/api.handler",
+      link: [bucket]
+    });
+  }
+});
+```
+
+### Linking Resources
+
+Components can be linked together to grant permissions and share configuration:
+
+```ts
+const bucket = new sst.aws.Bucket("MyBucket");
+const api = new sst.aws.Function("MyFunction", {
+  handler: "src/api.handler",
+  link: [bucket]
+});
+```
+
+Access linked resources in your code:
+
+```ts title="src/api.ts"
+import { Resource } from "sst";
+
+// Type-safe access to bucket name
+console.log(Resource.MyBucket.name);
+```
+
+### Transform Resources
+
+Customize the underlying cloud resources:
+
+```ts
+new sst.aws.Bucket("MyBucket", {
+  transform: {
+    bucket: {
+      serverSideEncryptionConfiguration: {
+        rule: {
+          applyServerSideEncryptionByDefault: {
+            sseAlgorithm: "AES256"
+          }
+        }
+      }
+    }
+  }
+});
+```
+
+## Component Properties
+
+Most components expose:
+
+- **Constructor args** - Configure the component
+- **Properties** - Access resource attributes (`.arn`, `.name`, etc.)
+- **Nodes** - Access underlying cloud resources
+- **Methods** - Perform actions (`.subscribe()`, `.route()`, etc.)
+
+## Learn More
+
+- [Linking Resources](/docs/linking/) - Connect components together
+- [Live Development](/docs/live/) - Develop with `sst dev`
+- [Transforming Resources](/docs/components#transform) - Customize infrastructure

@@ -1,0 +1,249 @@
+---
+title: "Linking (Python)"
+description: "Link resources to Python Lambda functions"
+---
+
+Link resources to your Python functions to access them at runtime with the SST SDK.
+
+## Basic Linking
+
+Link resources in your infrastructure code:
+
+```typescript sst.config.ts
+const bucket = new sst.aws.Bucket("MyBucket");
+const table = new sst.aws.Dynamo("MyTable", {
+  fields: { id: "string" },
+  primaryIndex: { hashKey: "id" }
+});
+
+new sst.aws.Function("MyPythonFunction", {
+  handler: "src/lambda.handler",
+  runtime: "python3.12",
+  link: [bucket, table]
+});
+```
+
+Access them in your Python code:
+
+```python src/lambda.py
+from sst import Resource
+import boto3
+
+s3 = boto3.client('s3')
+dynamodb = boto3.resource('dynamodb')
+
+def handler(event, context):
+    # Access linked resources
+    bucket_name = Resource.MyBucket.name
+    table_name = Resource.MyTable.name
+    
+    # Use them
+    s3.put_object(
+        Bucket=bucket_name,
+        Key='file.txt',
+        Body=b'Hello'
+    )
+    
+    table = dynamodb.Table(table_name)
+    table.put_item(Item={'id': '123', 'data': 'example'})
+    
+    return {'statusCode': 200}
+```
+
+## Linking Secrets
+
+Secrets work the same way:
+
+```typescript sst.config.ts
+const secret = new sst.Secret("ApiKey");
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  runtime: "python3.12",
+  link: [secret]
+});
+```
+
+Access in Python:
+
+```python
+from sst import Resource
+
+def handler(event, context):
+    api_key = Resource.ApiKey.value
+    # Use the secret
+    return {'statusCode': 200}
+```
+
+## Automatic Permissions
+
+Linking automatically grants IAM permissions:
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Function("Upload", {
+  handler: "src/upload.handler",
+  runtime: "python3.12",
+  link: [bucket]
+  // Automatically gets s3:PutObject, s3:GetObject, etc.
+});
+```
+
+No need to manually configure IAM policies.
+
+## Multiple Resources
+
+Link as many resources as needed:
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+const table = new sst.aws.Dynamo("MyTable", { /* ... */ });
+const queue = new sst.aws.Queue("MyQueue");
+const secret = new sst.Secret("ApiKey");
+
+new sst.aws.Function("Worker", {
+  handler: "src/worker.handler",
+  runtime: "python3.12",
+  link: [bucket, table, queue, secret]
+});
+```
+
+All available in your handler:
+
+```python
+from sst import Resource
+
+def handler(event, context):
+    bucket = Resource.MyBucket.name
+    table = Resource.MyTable.name
+    queue_url = Resource.MyQueue.url
+    api_key = Resource.ApiKey.value
+    
+    # Use all of them
+    return {'statusCode': 200}
+```
+
+## Linking to API Routes
+
+Link resources to API Gateway routes:
+
+```typescript
+const table = new sst.aws.Dynamo("UsersTable", { /* ... */ });
+
+const api = new sst.aws.ApiGatewayV2("MyApi");
+api.route("GET /users", {
+  handler: "src/get_users.handler",
+  runtime: "python3.12",
+  link: [table]
+});
+```
+
+```python src/get_users.py
+from sst import Resource
+import boto3
+import json
+
+dynamodb = boto3.resource('dynamodb')
+
+def handler(event, context):
+    table = dynamodb.Table(Resource.UsersTable.name)
+    response = table.scan()
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps(response['Items'], default=str)
+    }
+```
+
+## Linking to Queue Subscribers
+
+```typescript
+const bucket = new sst.aws.Bucket("Uploads");
+const queue = new sst.aws.Queue("ProcessQueue");
+
+queue.subscribe({
+  handler: "src/process.handler",
+  runtime: "python3.12",
+  link: [bucket]
+});
+```
+
+```python src/process.py
+from sst import Resource
+import boto3
+import json
+
+s3 = boto3.client('s3')
+
+def handler(event, context):
+    for record in event['Records']:
+        message = json.loads(record['body'])
+        
+        # Process using linked bucket
+        s3.put_object(
+            Bucket=Resource.Uploads.name,
+            Key=f"processed/{message['id']}.txt",
+            Body=b'Processed'
+        )
+```
+
+## Best Practices
+
+### Link Only What You Need
+
+```python
+# ✓ Good - minimal permissions
+new sst.aws.Function("GetUser", {
+  runtime: "python3.12",
+  handler: "src/get_user.handler",
+  link: [usersTable]
+});
+
+# ✗ Avoid - over-permissioned
+new sst.aws.Function("GetUser", {
+  runtime: "python3.12",
+  handler: "src/get_user.handler",
+  link: [usersTable, ordersTable, productsTable, paymentsTable]
+});
+```
+
+### Use Type Hints
+
+```python
+from sst import Resource
+from typing import Dict, Any
+
+def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    bucket_name: str = Resource.MyBucket.name
+    return {'statusCode': 200}
+```
+
+### Organize Imports
+
+```python
+# ✓ Good - organized imports
+from sst import Resource
+import boto3
+import json
+from typing import Dict, Any
+
+# Initialize clients
+s3 = boto3.client('s3')
+dynamodb = boto3.resource('dynamodb')
+
+def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    # Handler code
+    pass
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Resource Access" icon="database" href="/sdk/python/resource">
+    Learn more about the Resource API
+  </Card>
+  <Card title="Python Functions" icon="python" href="/components/aws/function">
+    Deploy Python Lambda functions
+  </Card>
+</CardGroup>

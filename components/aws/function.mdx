@@ -1,0 +1,320 @@
+---
+title: Function
+description: Reference doc for the `sst.aws.Function` component.
+---
+
+{/* DO NOT EDIT. AUTO-GENERATED FROM pkg/platform/src/components/aws/function.ts */}
+
+The `Function` component lets you add serverless functions to your app. It uses [AWS Lambda](https://aws.amazon.com/lambda/).
+
+## Constructor
+
+<Tabs>
+  <TabItem label="Node" default>
+    ```ts title="sst.config.ts"
+    new sst.aws.Function("MyFunction", {
+      handler: "src/lambda.handler"
+    });
+    ```
+  </TabItem>
+  <TabItem label="Python">
+    ```ts title="sst.config.ts"
+    new sst.aws.Function("MyFunction", {
+      runtime: "python3.11",
+      handler: "functions/src/functions/api.handler"
+    });
+    ```
+    You need uv installed and your handler in a uv workspace.
+  </TabItem>
+  <TabItem label="Go">
+    ```ts title="sst.config.ts"
+    new sst.aws.Function("MyFunction", {
+      runtime: "go",
+      handler: "./src"
+    });
+    ```
+  </TabItem>
+  <TabItem label="Rust">
+    ```ts title="sst.config.ts"
+    new sst.aws.Function("MyFunction", {
+      runtime: "rust",
+      handler: "./crates/api/"
+    });
+    ```
+  </TabItem>
+</Tabs>
+
+## Parameters
+
+### handler
+
+<ParamField path="handler" type="string" required>
+  Path to the handler for the function.
+
+  - For Node.js: `{path}/{file}.{method}` format
+  - For Python: `{path}/{file}.{method}` format
+  - For Go: `{path}` to the Go module
+  - For Rust: `{path}` to the Rust crate
+
+  ```ts
+  {
+    handler: "packages/functions/src/main.handler"
+  }
+  ```
+</ParamField>
+
+### runtime
+
+<ParamField path="runtime" type="string" default="nodejs24.x">
+  The language runtime for the function.
+
+  ```ts
+  {
+    runtime: "nodejs24.x"
+  }
+  ```
+
+  Supported values: `"nodejs18.x"`, `"nodejs20.x"`, `"nodejs22.x"`, `"nodejs24.x"`, `"go"`, `"rust"`, `"provided.al2"`, `"provided.al2023"`, `"python3.9"`, `"python3.10"`, `"python3.11"`, `"python3.12"`, `"python3.13"`
+</ParamField>
+
+### timeout
+
+<ParamField path="timeout" type="duration" default="20 seconds">
+  The maximum amount of time the function can run. Between 1 second and 900 seconds (15 minutes).
+
+  ```ts
+  {
+    timeout: "900 seconds"
+  }
+  ```
+
+  <Note>
+    If a function is connected to API Gateway, it will time out after 30 seconds regardless of this setting.
+  </Note>
+</ParamField>
+
+### memory
+
+<ParamField path="memory" type="string" default="1024 MB">
+  The amount of memory allocated for the function. Between 128 MB and 10240 MB in 1 MB increments.
+
+  ```ts
+  {
+    memory: "2048 MB"
+  }
+  ```
+
+  <Tip>
+    While less memory is cheaper, larger functions can process faster and might be more cost effective.
+  </Tip>
+</ParamField>
+
+### link
+
+<ParamField path="link" type="array">
+  [Link resources](/docs/linking/) to your function. This will:
+
+  1. Grant permissions to access the resources
+  2. Allow you to access them in your function using the [SDK](/docs/reference/sdk/)
+
+  ```ts
+  {
+    link: [bucket, stripeKey]
+  }
+  ```
+</ParamField>
+
+### environment
+
+<ParamField path="environment" type="Record<string, string>">
+  Key-value pairs of [Lambda environment variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html).
+
+  ```ts
+  {
+    environment: {
+      DEBUG: "true"
+    }
+  }
+  ```
+
+  <Note>
+    The total size of environment variables cannot exceed 4 KB.
+  </Note>
+</ParamField>
+
+### permissions
+
+<ParamField path="permissions" type="array">
+  Permissions to access other resources. These are added to the function's IAM role.
+
+  ```ts
+  {
+    permissions: [
+      {
+        actions: ["s3:GetObject", "s3:PutObject"],
+        resources: ["arn:aws:s3:::my-bucket/*"]
+      }
+    ]
+  }
+  ```
+
+  <Tip>
+    If you `link` the function to a resource, the permissions to access it are automatically added.
+  </Tip>
+</ParamField>
+
+### url
+
+<ParamField path="url" type="boolean | object" default="false">
+  Enable [Lambda function URLs](https://docs.aws.amazon.com/lambda/latest/dg/lambda-urls.html).
+
+  ```ts
+  {
+    url: true
+  }
+  ```
+
+  Configure the authorization and CORS settings:
+
+  ```ts
+  {
+    url: {
+      authorization: "iam",
+      cors: {
+        allowOrigins: ["https://example.com"]
+      }
+    }
+  }
+  ```
+</ParamField>
+
+### vpc
+
+<ParamField path="vpc" type="Vpc | object">
+  Connect the function to private subnets in a VPC.
+
+  ```ts
+  {
+    vpc: myVpc
+  }
+  ```
+
+  Where `myVpc` is:
+
+  ```ts
+  const myVpc = new sst.aws.Vpc("MyVpc");
+  ```
+</ParamField>
+
+## Properties
+
+### name
+
+<Property type="Output<string>">
+  The name of the Lambda function.
+
+  ```ts
+  console.log(myFunction.name);
+  ```
+</Property>
+
+### arn
+
+<Property type="Output<string>">
+  The ARN of the Lambda function.
+
+  ```ts
+  console.log(myFunction.arn);
+  ```
+</Property>
+
+### url
+
+<Property type="Output<string | undefined>">
+  The URL of the function if `url` is enabled.
+
+  ```ts
+  console.log(myFunction.url);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  The underlying resources this component creates.
+
+  #### function
+
+  <Property type="aws.lambda.Function">
+    The AWS Lambda function.
+  </Property>
+
+  #### role
+
+  <Property type="aws.iam.Role">
+    The IAM role for the function.
+  </Property>
+</Property>
+
+## SDK
+
+When you [link](/docs/linking/) a Function to another resource, you can access it in your function code using the SDK.
+
+```ts title="src/lambda.ts"
+import { Resource } from "sst";
+
+console.log(Resource.MyFunction.name);
+```
+
+## Examples
+
+### Set additional config
+
+```ts title="sst.config.ts"
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  timeout: "3 minutes",
+  memory: "2048 MB"
+});
+```
+
+### Link resources
+
+[Link resources](/docs/linking/) to the function:
+
+```ts title="sst.config.ts" {5}
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  link: [bucket]
+});
+```
+
+Access linked resources in your function:
+
+```ts title="src/lambda.ts"
+import { Resource } from "sst";
+
+console.log(Resource.MyBucket.name);
+```
+
+### Enable function URLs
+
+```ts title="sst.config.ts" {3}
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  url: true
+});
+```
+
+### Customize bundling
+
+```ts title="sst.config.ts"
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  nodejs: {
+    install: ["pg"]
+  }
+});
+```

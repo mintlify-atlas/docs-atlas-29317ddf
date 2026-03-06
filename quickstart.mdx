@@ -1,80 +1,265 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with SST in 5 minutes
 ---
 
-## Get started in three steps
+This quickstart will help you create and deploy your first SST application in just a few minutes.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+- **Node.js 18+** installed on your machine
+- An **AWS account** with credentials configured
+- **Basic knowledge of TypeScript** (helpful but not required)
 
-### Step 2: Deploy your changes
+## Create a new project
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Steps>
+  <Step title="Install SST">
+    Install SST in your project:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    <CodeGroup>
+    ```bash npm
+    npm install sst
+    ```
+    ```bash yarn
+    yarn add sst
+    ```
+    ```bash pnpm
+    pnpm add sst
+    ```
+    </CodeGroup>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    Or install the CLI globally:
 
-### Step 3: Go live
+    ```bash
+    curl -fsSL https://sst.dev/install | bash
+    ```
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="Initialize SST">
+    Initialize SST in your project:
+
+    ```bash
+    npx sst init
+    ```
+
+    This creates an `sst.config.ts` file in your project root.
+  </Step>
+
+  <Step title="Configure your app">
+    Open `sst.config.ts` and add your first resources:
+
+    ```ts title="sst.config.ts"
+    /// <reference path="./.sst/platform/config.d.ts" />
+
+    export default $config({
+      app(input) {
+        return {
+          name: "my-app",
+          removal: input?.stage === "production" ? "retain" : "remove",
+          home: "aws",
+        };
+      },
+      async run() {
+        // Create an S3 bucket
+        const bucket = new sst.aws.Bucket("MyBucket");
+
+        // Create a function with a public URL
+        const api = new sst.aws.Function("MyApi", {
+          handler: "src/api.handler",
+          link: [bucket],
+          url: true,
+        });
+
+        return {
+          api: api.url,
+          bucket: bucket.name,
+        };
+      },
+    });
+    ```
+  </Step>
+
+  <Step title="Create your function">
+    Create a `src/api.ts` file with your function code:
+
+    ```ts title="src/api.ts"
+    import { Resource } from "sst";
+    import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+
+    const s3 = new S3Client({});
+
+    export const handler = async () => {
+      // Access the linked bucket
+      const bucketName = Resource.MyBucket.name;
+
+      const command = new ListObjectsV2Command({
+        Bucket: bucketName,
+      });
+
+      const response = await s3.send(command);
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          message: "Hello from SST!",
+          bucket: bucketName,
+          objects: response.Contents?.length || 0,
+        }),
+      };
+    };
+    ```
+
+    Install the AWS SDK:
+
+    ```bash
+    npm install @aws-sdk/client-s3
+    ```
+  </Step>
+
+  <Step title="Configure AWS credentials">
+    Make sure your AWS credentials are configured. SST will use your default AWS profile.
+
+    You can verify your credentials with:
+
+    ```bash
+    aws sts get-caller-identity
+    ```
+
+    If you need to configure credentials:
+
+    ```bash
+    aws configure
+    ```
+  </Step>
+
+  <Step title="Deploy your app">
+    Deploy your application:
+
+    ```bash
+    npx sst deploy
+    ```
+
+    SST will:
+    - Create the S3 bucket
+    - Deploy the Lambda function
+    - Set up IAM permissions automatically
+    - Output the function URL
+
+    <Note>
+    The first deployment takes a few minutes as SST sets up the infrastructure in your AWS account.
+    </Note>
+  </Step>
+
+  <Step title="Test your function">
+    After deployment completes, you'll see output like:
+
+    ```bash frame="none"
+    ✓  Complete
+       api: https://abc123.lambda-url.us-east-1.on.aws/
+       bucket: my-app-mybucket-a1b2c3d4
+    ```
+
+    Test your function by visiting the URL in your browser or using curl:
+
+    ```bash
+    curl https://abc123.lambda-url.us-east-1.on.aws/
+    ```
+
+    You should see:
+
+    ```json
+    {
+      "message": "Hello from SST!",
+      "bucket": "my-app-mybucket-a1b2c3d4",
+      "objects": 0
+    }
+    ```
+  </Step>
+</Steps>
+
+## Development mode
+
+For local development with hot reload, use `sst dev`:
+
+```bash
+npx sst dev
+```
+
+This starts the SST multiplexer with:
+
+- **Live Lambda Development** — Your functions run locally and are invoked when triggered
+- **Hot reload** — Code changes are reflected instantly
+- **Full AWS access** — Your local functions have the same permissions as deployed functions
+
+<Tip>
+`sst dev` is much faster than deploying every time you make a change. Use it during development and `sst deploy` for production deployments.
+</Tip>
+
+## Make changes
+
+Try modifying your function:
+
+```ts title="src/api.ts" {13}
+import { Resource } from "sst";
+import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+
+const s3 = new S3Client({});
+
+export const handler = async () => {
+  const bucketName = Resource.MyBucket.name;
+
+  const command = new ListObjectsV2Command({ Bucket: bucketName });
+  const response = await s3.send(command);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      message: "Hello from SST! Updated version.",
+      bucket: bucketName,
+      objects: response.Contents?.length || 0,
+      timestamp: new Date().toISOString(),
+    }),
+  };
+};
+```
+
+With `sst dev` running, your changes are live immediately. Just refresh the URL to see the update.
+
+## Clean up
+
+When you're done, remove all resources:
+
+```bash
+npx sst remove
+```
+
+This deletes all the resources SST created in your AWS account.
+
+<Warning>
+If you deployed to production with `--stage production`, make sure to remove that stage too:
+```bash
+npx sst remove --stage production
+```
+</Warning>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you have a working SST app, explore more features:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Live Development" icon="bolt" href="/concepts/live-development">
+    Learn how Live Lambda Development works
+  </Card>
+  <Card title="Resource Linking" icon="link" href="/concepts/linking">
+    Connect your resources together
+  </Card>
+  <Card title="Stage Management" icon="layer-group" href="/guides/stage-management">
+    Manage multiple environments
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy to production
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

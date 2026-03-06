@@ -1,0 +1,288 @@
+---
+title: "Resource (Python)"
+description: "Access linked resources in Python Lambda functions"
+---
+
+The Python SDK provides access to linked resources through the `Resource` class.
+
+## Installation
+
+```bash
+pip install sst
+```
+
+## Import
+
+```python
+from sst import Resource
+```
+
+## Usage
+
+Access linked resources by name:
+
+```python
+from sst import Resource
+import boto3
+
+# Access a bucket
+s3 = boto3.client('s3')
+bucket_name = Resource.MyBucket.name
+
+# Access a table
+dynamodb = boto3.resource('dynamodb')
+table_name = Resource.MyTable.name
+table = dynamodb.Table(table_name)
+
+# Access an API
+api_url = Resource.MyApi.url
+```
+
+## Lambda Handler Example
+
+```python lambda.py
+from sst import Resource
+import boto3
+import json
+
+s3 = boto3.client('s3')
+
+def handler(event, context):
+    # Use linked bucket
+    s3.put_object(
+        Bucket=Resource.MyBucket.name,
+        Key='file.txt',
+        Body=b'Hello from Python'
+    )
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'message': 'Success'})
+    }
+```
+
+## DynamoDB Example
+
+```python
+from sst import Resource
+import boto3
+from decimal import Decimal
+
+dynamodb = boto3.resource('dynamodb')
+
+def handler(event, context):
+    table = dynamodb.Table(Resource.MyTable.name)
+    
+    # Put item
+    table.put_item(
+        Item={
+            'id': '123',
+            'data': 'Hello World',
+            'count': Decimal('42')
+        }
+    )
+    
+    # Get item
+    response = table.get_item(Key={'id': '123'})
+    item = response.get('Item')
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps(item, default=str)
+    }
+```
+
+## SQS Example
+
+```python
+from sst import Resource
+import boto3
+import json
+
+sqs = boto3.client('sqs')
+
+def handler(event, context):
+    # Send message to linked queue
+    sqs.send_message(
+        QueueUrl=Resource.MyQueue.url,
+        MessageBody=json.dumps({
+            'action': 'process',
+            'data': 'example'
+        })
+    )
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'message': 'Message sent'})
+    }
+```
+
+## Secrets Example
+
+```python
+from sst import Resource
+import requests
+
+def handler(event, context):
+    # Access secret value
+    api_key = Resource.StripeSecret.value
+    
+    # Use the secret
+    response = requests.post(
+        'https://api.stripe.com/v1/charges',
+        headers={'Authorization': f'Bearer {api_key}'},
+        data={'amount': 1000, 'currency': 'usd'}
+    )
+    
+    return {
+        'statusCode': 200,
+        'body': response.text
+    }
+```
+
+## App Metadata
+
+Access app information:
+
+```python
+from sst import Resource
+
+def handler(event, context):
+    app_name = Resource.App.name
+    stage = Resource.App.stage
+    
+    print(f"Running in {app_name} on {stage} stage")
+    
+    return {
+        'statusCode': 200,
+        'body': f'App: {app_name}, Stage: {stage}'
+    }
+```
+
+## How It Works
+
+The Python SDK reads resource information from environment variables:
+
+```python
+import os
+import json
+
+# SST sets these automatically
+resource_data = os.environ.get('SST_RESOURCE_MyBucket')
+bucket_info = json.loads(resource_data)
+bucket_name = bucket_info['name']
+
+# Or use the SDK wrapper
+from sst import Resource
+bucket_name = Resource.MyBucket.name  # Simpler
+```
+
+## Error Handling
+
+```python
+from sst import Resource
+import boto3
+from botocore.exceptions import ClientError
+
+s3 = boto3.client('s3')
+
+def handler(event, context):
+    try:
+        s3.put_object(
+            Bucket=Resource.MyBucket.name,
+            Key='file.txt',
+            Body=b'Hello'
+        )
+        return {'statusCode': 200}
+    except ClientError as e:
+        print(f"Error: {e}")
+        return {
+            'statusCode': 500,
+            'body': 'Internal server error'
+        }
+```
+
+## Type Hints
+
+Use type hints for better IDE support:
+
+```python
+from sst import Resource
+from typing import Dict, Any
+import boto3
+
+def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    bucket_name: str = Resource.MyBucket.name
+    
+    s3 = boto3.client('s3')
+    s3.put_object(
+        Bucket=bucket_name,
+        Key='file.txt',
+        Body=b'Hello'
+    )
+    
+    return {
+        'statusCode': 200,
+        'body': 'Success'
+    }
+```
+
+## Best Practices
+
+### Reuse Boto3 Clients
+
+Create clients outside the handler for reuse:
+
+```python
+from sst import Resource
+import boto3
+
+# ✓ Good - client reused across invocations
+s3 = boto3.client('s3')
+
+def handler(event, context):
+    s3.put_object(
+        Bucket=Resource.MyBucket.name,
+        Key='file.txt',
+        Body=b'Hello'
+    )
+```
+
+### Handle Missing Resources
+
+```python
+from sst import Resource
+
+def handler(event, context):
+    try:
+        bucket_name = Resource.MyBucket.name
+    except AttributeError:
+        return {
+            'statusCode': 500,
+            'body': 'Bucket not linked'
+        }
+```
+
+### Use Environment Variables for Configuration
+
+```python
+import os
+from sst import Resource
+
+DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
+
+def handler(event, context):
+    if DEBUG:
+        print(f"Using bucket: {Resource.MyBucket.name}")
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Linking" icon="link" href="/sdk/python/linking">
+    Learn how to link resources to Python functions
+  </Card>
+  <Card title="Function Component" icon="function" href="/components/aws/function">
+    Deploy Python Lambda functions with SST
+  </Card>
+</CardGroup>

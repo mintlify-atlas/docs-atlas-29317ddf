@@ -1,0 +1,279 @@
+---
+title: Installation
+description: Install the SST CLI on your system
+---
+
+The SST CLI is available for macOS, Linux, and Windows (via WSL). You can install it locally in your project or globally on your system.
+
+## Local installation
+
+If you're using SST as part of a Node.js project, we recommend installing it locally.
+
+<CodeGroup>
+```bash npm
+npm install sst
+```
+```bash yarn
+yarn add sst
+```
+```bash pnpm
+pnpm add sst
+```
+```bash bun
+bun add sst
+```
+</CodeGroup>
+
+Then run SST commands using your package manager:
+
+<CodeGroup>
+```bash npm
+npx sst deploy
+```
+```bash yarn
+yarn sst deploy
+```
+```bash pnpm
+pnpm sst deploy
+```
+```bash bun
+bun sst deploy
+```
+</CodeGroup>
+
+<Tip>
+Local installation ensures everyone on your team uses the same SST version.
+</Tip>
+
+## Global installation
+
+If you're not using Node.js, you can install the CLI globally.
+
+### Quick install
+
+Use the install script:
+
+```bash
+curl -fsSL https://sst.dev/install | bash
+```
+
+### Install a specific version
+
+To install a specific version, set the `VERSION` environment variable:
+
+```bash
+curl -fsSL https://sst.dev/install | VERSION=0.0.403 bash
+```
+
+### Package managers
+
+<Tabs>
+  <Tab title="macOS">
+    Install via Homebrew:
+
+    ```bash
+    brew install sst/tap/sst
+    ```
+
+    To upgrade:
+
+    ```bash
+    brew upgrade sst
+    ```
+
+    You might need to run `brew upgrade sst` before updating.
+  </Tab>
+
+  <Tab title="Linux">
+    **Debian/Ubuntu**
+
+    Download the `.deb` file from the [releases page](https://github.com/sst/sst/releases/latest) and install:
+
+    ```bash
+    sudo dpkg -i sst_*.deb
+    ```
+
+    **RHEL/CentOS/Fedora**
+
+    Download the `.rpm` file from the [releases page](https://github.com/sst/sst/releases/latest) and install:
+
+    ```bash
+    sudo rpm -i sst_*.rpm
+    ```
+
+    **Arch Linux**
+
+    Available in the [AUR](https://aur.archlinux.org/packages/sst-bin):
+
+    ```bash
+    yay -S sst-bin
+    ```
+  </Tab>
+
+  <Tab title="Windows">
+    <Note>
+    Windows support is available through WSL (Windows Subsystem for Linux).
+    </Note>
+
+    1. Install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install)
+    2. Follow the Linux installation instructions inside WSL
+  </Tab>
+</Tabs>
+
+### Manual installation
+
+Download the pre-compiled binaries from the [releases page](https://github.com/sst/sst/releases/latest) and copy to your desired location.
+
+## Verify installation
+
+Verify that SST is installed correctly:
+
+```bash
+sst version
+```
+
+This should output the installed version:
+
+```bash frame="none"
+SST 3.0.0
+```
+
+## Upgrade
+
+To upgrade to the latest version:
+
+<Tabs>
+  <Tab title="npm/yarn/pnpm">
+    Update the package in your project:
+
+    <CodeGroup>
+    ```bash npm
+    npm update sst
+    ```
+    ```bash yarn
+    yarn upgrade sst
+    ```
+    ```bash pnpm
+    pnpm update sst
+    ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="Global">
+    Use the upgrade command:
+
+    ```bash
+    sst upgrade
+    ```
+
+    Or upgrade to a specific version:
+
+    ```bash
+    sst upgrade 0.10
+    ```
+
+    For Homebrew:
+
+    ```bash
+    brew upgrade sst
+    ```
+  </Tab>
+</Tabs>
+
+## Dependencies
+
+SST automatically installs and manages its dependencies when you run commands. These include:
+
+- **Pulumi** — Used for infrastructure deployment
+- **Bun** — Used for building and running code
+
+The first time you run an SST command, you'll see:
+
+```bash frame="none"
+⠇  Installing pulumi...
+⠇  Installing bun...
+```
+
+These are installed in your system's SST directory and shared across all your projects.
+
+<Info>
+You can see where SST stores its files by running `sst version`.
+</Info>
+
+## Environment variables
+
+You can configure SST's behavior using environment variables:
+
+### SST_STAGE
+
+Set the default stage for all commands:
+
+```bash
+export SST_STAGE=production
+sst deploy
+```
+
+This is equivalent to:
+
+```bash
+sst deploy --stage production
+```
+
+### SST_PRINT_LOGS
+
+Print detailed logs to the console:
+
+```bash
+SST_PRINT_LOGS=1 sst deploy
+```
+
+Useful in CI/CD environments where you want to see all logs.
+
+### SST_TELEMETRY_DISABLED
+
+Disable anonymous telemetry:
+
+```bash
+export SST_TELEMETRY_DISABLED=1
+```
+
+Or:
+
+```bash
+sst telemetry disable
+```
+
+### NPM_REGISTRY
+
+Use a custom npm registry for provider packages:
+
+```bash
+NPM_REGISTRY=https://my-registry.com sst add aws
+```
+
+## Configuration file
+
+You can optionally specify a custom path to your config file:
+
+```bash
+sst --config path/to/sst.config.ts deploy
+```
+
+This is useful in monorepos with multiple SST apps.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Create your first SST app
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/reference/cli">
+    Explore all CLI commands
+  </Card>
+  <Card title="sst.config.ts" icon="file-code" href="/concepts/config">
+    Learn about the config file
+  </Card>
+  <Card title="Providers" icon="plug" href="/guides/providers">
+    Add cloud providers
+  </Card>
+</CardGroup>

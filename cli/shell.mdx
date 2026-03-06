@@ -1,0 +1,138 @@
+---
+title: sst shell
+description: Reference doc for the `sst shell` command.
+---
+
+Run a command with **all the resources linked** to the environment. This is useful for running scripts against your infrastructure.
+
+```bash
+sst shell node my-script.js
+```
+
+## How it works
+
+For example, let's say you have the following resources in your app:
+
+```js title="sst.config.ts"
+new sst.aws.Bucket("MyMainBucket");
+new sst.aws.Bucket("MyAdminBucket");
+```
+
+We can now write a script that can access both these resources with the [JS SDK](/docs/reference/sdk/):
+
+```js title="my-script.js" "Resource.MyMainBucket.name" "Resource.MyAdminBucket.name"
+import { Resource } from "sst";
+
+console.log(Resource.MyMainBucket.name, Resource.MyAdminBucket.name);
+```
+
+And run the script with `sst shell`:
+
+```bash
+sst shell node my-script.js
+```
+
+This'll have access to all the buckets from above.
+
+<Note>
+Run the command with `--` to pass arguments to it.
+</Note>
+
+To pass arguments into the script, you'll need to prefix it using `--`:
+
+```bash
+sst shell -- node my-script.js --arg1 --arg2
+```
+
+## Opening a shell session
+
+If no command is passed in, it opens a shell session with the linked resources:
+
+```bash
+sst shell
+```
+
+This is useful if you want to run multiple commands, all while accessing the resources in your app.
+
+## Targeting a component
+
+Optionally, you can run this for a specific component by passing in the name of the component:
+
+```bash
+sst shell --target MyComponent
+```
+
+Here the linked resources for `MyComponent` and its environment variables are available.
+
+## Options
+
+### `--target`
+
+Only run it for the given component.
+
+```bash
+sst shell --target MyComponent
+```
+
+This will only load the resources linked to `MyComponent`.
+
+## Arguments
+
+### `command`
+
+<ParamField body="command" type="string">
+  A command to run.
+</ParamField>
+
+The command to run with linked resources available. If not provided, opens an interactive shell.
+
+```bash
+sst shell node script.js
+```
+
+## Examples
+
+### Open a shell session
+
+Open an interactive shell with all resources linked:
+
+```bash
+sst shell
+```
+
+### Run a Node.js script
+
+```bash
+sst shell node my-script.js
+```
+
+### Run a Python script
+
+```bash
+sst shell python my-script.py
+```
+
+### Pass arguments to the script
+
+Use `--` to pass arguments:
+
+```bash
+sst shell -- node my-script.js --arg1 --arg2
+```
+
+### Run for a specific component
+
+```bash
+sst shell --target MyComponent node script.js
+```
+
+### Run database migrations
+
+```bash
+sst shell npx prisma migrate dev
+```
+
+## Related
+
+- [`sst dev`](/docs/reference/cli/dev) - Run commands in dev mode
+- [Resource linking](/docs/linking) - Learn more about linking resources

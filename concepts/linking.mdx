@@ -1,0 +1,471 @@
+---
+title: Linking Resources
+description: Connect your infrastructure components automatically
+---
+
+Linking is one of SST's most powerful features. It lets you connect resources together so they can access each other at runtime, with automatic permissions and type-safe access.
+
+## What is linking?
+
+When you link a resource to a function or frontend, SST automatically:
+
+1. **Grants permissions** — Adds the necessary IAM permissions
+2. **Injects environment variables** — Makes resource info available at runtime
+3. **Provides type safety** — Enables autocomplete in your IDE
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  link: [bucket], // Link the bucket
+});
+```
+
+In your function code, access the linked resource:
+
+```ts title="src/lambda.ts"
+import { Resource } from "sst";
+
+export const handler = async () => {
+  // Type-safe access to the bucket name
+  console.log(Resource.MyBucket.name);
+};
+```
+
+## How it works
+
+Behind the scenes, linking:
+
+1. Generates `SST_RESOURCE_*` environment variables with resource information
+2. Adds IAM permissions to the function's execution role
+3. Makes these available through the `Resource` object in the SDK
+
+```bash
+# Environment variables injected by SST
+SST_RESOURCE_MyBucket={"name":"my-app-dev-mybucket-a1b2c3d4",...}
+```
+
+<Info>
+The `Resource` object is fully typed based on your `sst.config.ts`, giving you autocomplete and type checking.
+</Info>
+
+## Linking resources
+
+Most SST components support the `link` prop:
+
+```ts
+const bucket = new sst.aws.Bucket("MyBucket");
+const table = new sst.aws.Dynamo("MyTable", {
+  fields: { id: "string" },
+  primaryIndex: { hashKey: "id" },
+});
+
+const api = new sst.aws.Function("MyApi", {
+  handler: "src/api.handler",
+  link: [bucket, table], // Link multiple resources
+  url: true,
+});
+```
+
+### What can be linked?
+
+You can link:
+
+- **SST components** — Bucket, Function, Dynamo, Queue, etc.
+- **Secrets** — sst.Secret for encrypted values
+- **Custom resources** — Using sst.Linkable
+- **Pulumi resources** — After wrapping with Linkable.wrap()
+
+## Accessing linked resources
+
+Use the SST SDK to access linked resources in your code:
+
+```ts title="src/handler.ts"
+import { Resource } from "sst";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+
+const s3 = new S3Client({});
+const dynamodb = new DynamoDBClient({});
+
+export const handler = async (event: any) => {
+  // Access the bucket
+  await s3.send(new PutObjectCommand({
+    Bucket: Resource.MyBucket.name,
+    Key: "file.txt",
+    Body: "Hello World",
+  }));
+
+  // Access the table
+  await dynamodb.send(new PutItemCommand({
+    TableName: Resource.MyTable.name,
+    Item: {
+      id: { S: "123" },
+      data: { S: "example" },
+    },
+  }));
+
+  return { statusCode: 200 };
+};
+```
+
+### In frontends
+
+Frontends like Next.js can also access linked resources:
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Nextjs("MyWeb", {
+  link: [bucket],
+});
+```
+
+```tsx title="app/page.tsx"
+import { Resource } from "sst";
+
+export default function Page() {
+  return (
+    <div>
+      <h1>Bucket: {Resource.MyBucket.name}</h1>
+    </div>
+  );
+}
+```
+
+<Warning>
+Only link server-side resources to server components or API routes. Don't expose sensitive resources to client components.
+</Warning>
+
+## Linking secrets
+
+Secrets are a special type of linkable resource:
+
+```ts title="sst.config.ts"
+const secret = new sst.Secret("StripeKey");
+
+const api = new sst.aws.Function("MyApi", {
+  handler: "src/api.handler",
+  link: [secret],
+});
+```
+
+Set the secret value:
+
+```bash
+sst secret set StripeKey sk_test_abc123
+```
+
+Access it in your code:
+
+```ts title="src/api.ts"
+import { Resource } from "sst";
+
+export const handler = async () => {
+  const stripeKey = Resource.StripeKey.value;
+  // Use the secret...
+};
+```
+
+<Tip>
+Secrets are encrypted at rest and only decrypted at runtime in your function.
+</Tip>
+
+## Custom linkable resources
+
+You can make any value linkable using `sst.Linkable`:
+
+```ts title="sst.config.ts"
+const config = new sst.Linkable("Config", {
+  properties: {
+    apiEndpoint: "https://api.example.com",
+    apiVersion: "v1",
+  },
+});
+
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  link: [config],
+});
+```
+
+Access it in your code:
+
+```ts title="src/handler.ts"
+import { Resource } from "sst";
+
+export const handler = async () => {
+  console.log(Resource.Config.apiEndpoint);
+  console.log(Resource.Config.apiVersion);
+};
+```
+
+### Linking multiple resources
+
+Combine multiple resources into a single linkable:
+
+```ts title="sst.config.ts"
+const bucketA = new sst.aws.Bucket("BucketA");
+const bucketB = new sst.aws.Bucket("BucketB");
+
+const storage = new sst.Linkable("Storage", {
+  properties: {
+    bucketA: bucketA.name,
+    bucketB: bucketB.name,
+    region: aws.getRegionOutput().name,
+  },
+  include: [
+    sst.aws.permission({
+      actions: ["s3:*"],
+      resources: [bucketA.arn, bucketB.arn],
+    }),
+  ],
+});
+
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  link: [storage],
+});
+```
+
+### Wrapping Pulumi resources
+
+Make any Pulumi resource linkable:
+
+```ts title="sst.config.ts"
+import * as aws from "@pulumi/aws";
+
+// Make DynamoDB tables linkable
+sst.Linkable.wrap(aws.dynamodb.Table, (table) => ({
+  properties: {
+    tableName: table.name,
+    arn: table.arn,
+  },
+  include: [
+    sst.aws.permission({
+      actions: ["dynamodb:*"],
+      resources: [table.arn],
+    }),
+  ],
+}));
+
+// Now you can link any DynamoDB table
+const table = new aws.dynamodb.Table("MyTable", {
+  attributes: [{ name: "id", type: "S" }],
+  hashKey: "id",
+  billingMode: "PAY_PER_REQUEST",
+});
+
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  link: [table],
+});
+```
+
+## Permissions
+
+SST components automatically grant appropriate permissions when linked:
+
+- **Bucket** — `s3:*` on the bucket
+- **Dynamo** — `dynamodb:*` on the table
+- **Queue** — `sqs:*` on the queue
+- **SnsTopic** — `sns:*` on the topic
+
+You can customize permissions in custom linkables:
+
+```ts
+const restricted = new sst.Linkable("Restricted", {
+  properties: {
+    bucketName: bucket.name,
+  },
+  include: [
+    sst.aws.permission({
+      actions: ["s3:GetObject"], // Read-only access
+      resources: [bucket.arn],
+    }),
+  ],
+});
+```
+
+### Modifying built-in permissions
+
+Override default linking behavior:
+
+```ts
+sst.Linkable.wrap(sst.aws.Bucket, (bucket) => ({
+  properties: { name: bucket.name },
+  include: [
+    sst.aws.permission({
+      actions: ["s3:GetObject", "s3:PutObject"], // Custom permissions
+      resources: [bucket.arn],
+    }),
+  ],
+}));
+```
+
+## Cloudflare bindings
+
+For Cloudflare Workers, linking creates bindings instead of environment variables:
+
+```ts title="sst.config.ts"
+const bucket = new sst.cloudflare.Bucket("MyBucket");
+
+const worker = new sst.cloudflare.Worker("MyWorker", {
+  handler: "src/worker.ts",
+  link: [bucket],
+});
+```
+
+```ts title="src/worker.ts"
+export default {
+  async fetch(request: Request, env: any) {
+    // Access via env
+    const bucketName = env.MyBucket.name;
+    return new Response(`Bucket: ${bucketName}`);
+  },
+};
+```
+
+## Env vars for external compute
+
+If you're deploying to compute not managed by SST (like ECS tasks or Kubernetes), use `Linkable.env()`:
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+const table = new sst.aws.Dynamo("MyTable", {
+  fields: { id: "string" },
+  primaryIndex: { hashKey: "id" },
+});
+
+const env = sst.Linkable.env([bucket, table]);
+
+// Use with any provider that accepts env vars
+new vercel.Project("MyProject", {
+  name: "my-project",
+  environment: env,
+});
+```
+
+This generates `SST_RESOURCE_*` environment variables that work with the `Resource` object:
+
+```ts
+import { Resource } from "sst";
+
+// Works the same way
+console.log(Resource.MyBucket.name);
+```
+
+## Type safety
+
+The `Resource` object is fully typed based on your `sst.config.ts`. This means:
+
+- **Autocomplete** — Your IDE suggests available resources
+- **Type checking** — TypeScript catches typos and wrong property access
+- **IntelliSense** — See resource properties without checking the config
+
+```ts
+import { Resource } from "sst";
+
+// TypeScript knows these exist
+Resource.MyBucket.name;     // ✓ OK
+Resource.MyTable.name;      // ✓ OK
+
+// TypeScript catches errors
+Resource.MyBucket.tableName; // ✗ Error: Property doesn't exist
+Resource.NonExistent.name;   // ✗ Error: Resource not linked
+```
+
+## Dev mode
+
+Links work the same in `sst dev`:
+
+- Functions running locally have access to linked resources
+- Resources are created in AWS/Cloudflare as normal
+- Environment variables are injected into the local process
+
+```bash
+sst dev
+```
+
+Your local functions can access production-like resources safely.
+
+## Best practices
+
+### Link only what you need
+
+Don't link everything to every function:
+
+```ts
+// Good - specific links
+const uploadFn = new sst.aws.Function("Upload", {
+  handler: "src/upload.handler",
+  link: [uploadBucket], // Only what it needs
+});
+
+const processFn = new sst.aws.Function("Process", {
+  handler: "src/process.handler",
+  link: [processQueue, database], // Only what it needs
+});
+
+// Avoid - linking everything
+const allResources = [uploadBucket, processQueue, database, cache];
+const fn = new sst.aws.Function("Fn", {
+  handler: "src/handler.handler",
+  link: allResources, // Too broad
+});
+```
+
+### Use Linkable for configuration
+
+Group related config into linkables:
+
+```ts
+const apiConfig = new sst.Linkable("ApiConfig", {
+  properties: {
+    endpoint: "https://api.example.com",
+    version: "v1",
+    timeout: 30,
+  },
+});
+```
+
+### Prefer linking over manual permissions
+
+Linking is safer and more maintainable:
+
+```ts
+// Good
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  link: [bucket],
+});
+
+// Avoid
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  permissions: [
+    {
+      actions: ["s3:*"],
+      resources: [bucket.arn],
+    },
+  ],
+});
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Components" icon="cubes" href="/concepts/components">
+    Learn about SST components
+  </Card>
+  <Card title="Secrets" icon="key" href="/guides/secrets-management">
+    Manage encrypted secrets
+  </Card>
+  <Card title="SDK Reference" icon="book" href="/docs/reference/sdk">
+    Explore the SDK
+  </Card>
+  <Card title="Examples" icon="code" href="https://github.com/sst/sst/tree/dev/examples">
+    Browse example applications
+  </Card>
+</CardGroup>

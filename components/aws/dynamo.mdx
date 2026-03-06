@@ -1,0 +1,264 @@
+---
+title: Dynamo
+description: Reference doc for the `sst.aws.Dynamo` component.
+---
+
+{/* DO NOT EDIT. AUTO-GENERATED FROM pkg/platform/src/components/aws/dynamo.ts */}
+
+The `Dynamo` component lets you add an [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) table to your app.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const table = new sst.aws.Dynamo("MyTable", {
+  fields: {
+    userId: "string",
+    noteId: "string"
+  },
+  primaryIndex: { hashKey: "userId", rangeKey: "noteId" }
+});
+```
+
+## Parameters
+
+### fields
+
+<ParamField path="fields" type="Record<string, 'string' | 'number' | 'binary'>" required>
+  Define the fields used for indexes. You only need to define fields used in indexes, not all table fields.
+
+  ```ts
+  {
+    fields: {
+      userId: "string",
+      noteId: "string",
+      createdAt: "number"
+    }
+  }
+  ```
+
+  <Warning>
+    Field types cannot be changed after table creation.
+  </Warning>
+</ParamField>
+
+### primaryIndex
+
+<ParamField path="primaryIndex" type="object" required>
+  Define the table's primary index.
+
+  ```ts
+  {
+    primaryIndex: { hashKey: "userId", rangeKey: "noteId" }
+  }
+  ```
+</ParamField>
+
+### globalIndexes
+
+<ParamField path="globalIndexes" type="Record<string, object>">
+  Configure global secondary indexes. You can have up to 20 global indexes per table.
+
+  ```ts
+  {
+    globalIndexes: {
+      CreatedAtIndex: { hashKey: "userId", rangeKey: "createdAt" }
+    }
+  }
+  ```
+
+  Create composite keys with multiple attributes:
+
+  ```ts
+  {
+    globalIndexes: {
+      RegionCategoryIndex: {
+        hashKey: ["region", "category"],
+        rangeKey: "createdAt"
+      }
+    }
+  }
+  ```
+</ParamField>
+
+### localIndexes
+
+<ParamField path="localIndexes" type="Record<string, object>">
+  Configure local secondary indexes. You can have up to 5 local indexes per table.
+
+  ```ts
+  {
+    localIndexes: {
+      CreatedAtIndex: { rangeKey: "createdAt" }
+    }
+  }
+  ```
+</ParamField>
+
+### stream
+
+<ParamField path="stream" type='"keys-only" | "new-image" | "old-image" | "new-and-old-images"'>
+  Enable [DynamoDB Streams](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html) to capture item changes.
+
+  ```ts
+  {
+    stream: "new-and-old-images"
+  }
+  ```
+
+  <Tip>
+    Use `"new-and-old-images"` as a good default since it contains all the data.
+  </Tip>
+
+  <Note>
+    Streams are not enabled by default due to associated costs.
+  </Note>
+</ParamField>
+
+### ttl
+
+<ParamField path="ttl" type="string">
+  The field name to store Time to Live (TTL) timestamps. Items are deleted when TTL is reached.
+
+  ```ts
+  {
+    ttl: "expiresAt"
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### name
+
+<Property type="Output<string>">
+  The name of the DynamoDB Table.
+
+  ```ts
+  console.log(table.name);
+  ```
+</Property>
+
+### arn
+
+<Property type="Output<string>">
+  The ARN of the DynamoDB Table.
+
+  ```ts
+  console.log(table.arn);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  The underlying resources this component creates.
+
+  #### table
+
+  <Property type="aws.dynamodb.Table">
+    The Amazon DynamoDB Table.
+  </Property>
+</Property>
+
+## Methods
+
+### subscribe
+
+<Method>
+  Subscribe to the DynamoDB Stream of this table.
+
+  ```ts
+  table.subscribe("MySubscriber", "src/subscriber.handler");
+  ```
+
+  <Note>
+    You must enable `stream` before subscribing.
+  </Note>
+
+  Add filters to process specific events:
+
+  ```ts
+  table.subscribe("MySubscriber", "src/subscriber.handler", {
+    filters: [
+      {
+        dynamodb: {
+          Keys: {
+            CustomerName: {
+              S: ["AnyCompany Industries"]
+            }
+          }
+        }
+      }
+    ]
+  });
+  ```
+</Method>
+
+## SDK
+
+Query the table from your function code:
+
+```ts title="src/api.ts"
+import { Resource } from "sst";
+import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
+
+const client = new DynamoDBClient();
+
+await client.send(new QueryCommand({
+  TableName: Resource.MyTable.name,
+  KeyConditionExpression: "userId = :userId",
+  ExpressionAttributeValues: {
+    ":userId": { S: "my-user-id" }
+  }
+}));
+```
+
+## Examples
+
+### Add a global index
+
+```ts title="sst.config.ts"
+new sst.aws.Dynamo("MyTable", {
+  fields: {
+    userId: "string",
+    noteId: "string",
+    createdAt: "number"
+  },
+  primaryIndex: { hashKey: "userId", rangeKey: "noteId" },
+  globalIndexes: {
+    CreatedAtIndex: { hashKey: "userId", rangeKey: "createdAt" }
+  }
+});
+```
+
+### Subscribe to streams
+
+```ts title="sst.config.ts"
+const table = new sst.aws.Dynamo("MyTable", {
+  fields: {
+    userId: "string",
+    noteId: "string"
+  },
+  primaryIndex: { hashKey: "userId", rangeKey: "noteId" },
+  stream: "new-and-old-images"
+});
+
+table.subscribe("MySubscriber", "src/subscriber.handler");
+```
+
+### Link to a function
+
+```ts title="sst.config.ts"
+const table = new sst.aws.Dynamo("MyTable", {
+  fields: {
+    userId: "string",
+    noteId: "string"
+  },
+  primaryIndex: { hashKey: "userId", rangeKey: "noteId" }
+});
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/api.handler",
+  link: [table]
+});
+```

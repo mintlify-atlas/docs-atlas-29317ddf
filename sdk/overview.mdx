@@ -1,0 +1,125 @@
+---
+title: "SDK Overview"
+description: "Access your linked resources at runtime with the SST SDK"
+---
+
+The SST SDK provides runtime access to resources you've linked in your infrastructure code. It's available in multiple languages and provides type-safe access to your linked resources.
+
+## What is the SDK?
+
+When you link resources in your `sst.config.ts`, SST automatically generates the necessary configuration to access them at runtime. The SDK provides a convenient `Resource` API to access these linked resources with full type safety and IntelliSense support.
+
+```typescript sst.config.ts
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Function("MyFunction", {
+  link: [bucket],
+  handler: "src/lambda.handler"
+});
+```
+
+In your function code, you can access the bucket:
+
+```typescript src/lambda.ts
+import { Resource } from "sst";
+
+console.log(Resource.MyBucket.name);
+```
+
+## Multi-Language Support
+
+The SST SDK is available for:
+
+<CardGroup cols={2}>
+  <Card title="JavaScript/TypeScript" icon="js" href="/sdk/js/resource">
+    Full-featured SDK with auth helpers and type safety
+  </Card>
+  <Card title="Python" icon="python" href="/sdk/python/resource">
+    Access linked resources in Python Lambda functions
+  </Card>
+  <Card title="Go" icon="golang" href="/sdk/go/resource">
+    Type-safe resource access in Go
+  </Card>
+  <Card title="Rust" icon="rust" href="/sdk/rust/resource">
+    Zero-cost abstractions for resource access
+  </Card>
+</CardGroup>
+
+## Key Features
+
+### Type Safety
+
+The SDK provides full TypeScript type definitions based on your linked resources:
+
+```typescript
+import { Resource } from "sst";
+
+// TypeScript knows exactly what properties are available
+const bucketName = Resource.MyBucket.name; // ✓ Type-safe
+const invalidProp = Resource.MyBucket.invalid; // ✗ TypeScript error
+```
+
+### IntelliSense Support
+
+Your IDE provides autocomplete for all linked resources and their properties:
+
+- Resource names autocomplete as you type
+- Property names and types are suggested
+- Documentation appears inline
+
+### Environment Agnostic
+
+The SDK works in multiple environments:
+
+- **Lambda functions** - Automatic configuration
+- **Containers** - ECS/Fargate support
+- **Local development** - Works with `sst dev`
+- **Cloudflare Workers** - Special helpers for Workers environment
+
+## How Linking Works
+
+When you link a resource:
+
+1. **Build time** - SST analyzes your `link` arrays
+2. **Deploy time** - SST generates environment variables or configuration
+3. **Runtime** - The SDK reads these values and makes them available through `Resource`
+
+<Note>
+The actual resource values (like bucket names, API URLs, etc.) are injected at deploy time, so your code doesn't need to know about staging, production, or other environments.
+</Note>
+
+## Installation
+
+Install the SDK for your language:
+
+<CodeGroup>
+```bash npm
+npm install sst
+```
+```bash yarn
+yarn add sst
+```
+```bash pnpm
+pnpm add sst
+```
+```bash Python
+pip install sst
+```
+```bash Go
+go get github.com/sst/sst/v3/sdk/golang/resource
+```
+```bash Rust
+cargo add sst
+```
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Resource Access" icon="database" href="/sdk/js/resource">
+    Learn how to access linked resources in your code
+  </Card>
+  <Card title="Linking Guide" icon="link" href="/concepts/linking">
+    Understand how resource linking works
+  </Card>
+</CardGroup>

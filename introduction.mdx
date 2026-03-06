@@ -1,0 +1,149 @@
+---
+title: Introduction to SST
+description: Build full-stack applications on your own infrastructure
+---
+
+SST is a framework that makes it easy to build modern full-stack applications on your own infrastructure.
+
+## What is SST?
+
+SST helps you build and deploy full-stack applications on AWS and Cloudflare. It uses **Infrastructure as Code** through Pulumi and Terraform to define your infrastructure, and provides a live development environment that makes building serverless applications fast.
+
+With SST v3, you get:
+
+- **Type-safe infrastructure** — Define your infrastructure in TypeScript with full type safety
+- **Live development** — Test your Lambda functions locally with Live Lambda Development
+- **Automatic deployment** — Deploy to AWS or Cloudflare with a single command
+- **Resource linking** — Connect your functions to databases, queues, and other resources automatically
+- **Multi-cloud support** — Deploy to AWS, Cloudflare, or use multiple providers together
+
+## How it works
+
+SST applications are defined in a `sst.config.ts` file. This file contains:
+
+1. **App configuration** — Your app name, home provider, and deployment settings
+2. **Resources** — All the infrastructure components like functions, databases, APIs, etc.
+3. **Outputs** — Values you want to access after deployment
+
+Here's a simple example:
+
+```ts title="sst.config.ts"
+/// <reference path="./.sst/platform/config.d.ts" />
+
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      removal: input?.stage === "production" ? "retain" : "remove",
+      home: "aws",
+    };
+  },
+  async run() {
+    const bucket = new sst.aws.Bucket("MyBucket");
+    const api = new sst.aws.Function("MyApi", {
+      handler: "src/api.handler",
+      link: [bucket],
+      url: true,
+    });
+
+    return {
+      api: api.url,
+      bucket: bucket.name,
+    };
+  },
+});
+```
+
+This creates an S3 bucket and a Lambda function with a URL. The function is automatically linked to the bucket, giving it the necessary permissions.
+
+## Key features
+
+### Live development
+
+With `sst dev`, your Lambda functions run locally against your deployed infrastructure. Changes to your code are reflected instantly without redeployment.
+
+```bash
+sst dev
+```
+
+This starts a multiplexer that:
+- Deploys your infrastructure
+- Runs your functions locally with hot reload
+- Starts your frontend dev server
+- Opens tunnels to your VPC if needed
+
+### Resource linking
+
+SST automatically handles permissions and environment variables when you link resources:
+
+```ts
+const bucket = new sst.aws.Bucket("MyBucket");
+
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  link: [bucket], // Automatically grants permissions
+});
+```
+
+In your function code, access linked resources type-safely:
+
+```ts title="src/handler.ts"
+import { Resource } from "sst";
+
+export const handler = async () => {
+  console.log(Resource.MyBucket.name); // Type-safe access
+};
+```
+
+### Multi-stage deployments
+
+SST uses stages to isolate environments. Each stage gets its own set of resources:
+
+```bash
+# Deploy to development
+sst deploy --stage dev
+
+# Deploy to production
+sst deploy --stage production
+```
+
+### Built-in components
+
+SST provides high-level components for common use cases:
+
+- **Functions** — AWS Lambda functions with live development
+- **APIs** — API Gateway REST and HTTP APIs
+- **Frontends** — Next.js, Remix, Astro, SvelteKit, and more
+- **Databases** — DynamoDB, Aurora, RDS, Redis
+- **Storage** — S3 buckets with automatic policies
+- **Queues** — SQS queues with Lambda subscribers
+- **And many more...**
+
+## Why SST?
+
+**Fast iteration** — Live Lambda Development means you can test changes instantly without waiting for deployments.
+
+**Type safety** — Full TypeScript support across your infrastructure and application code.
+
+**Flexible** — Use high-level SST components or drop down to Pulumi/Terraform resources when needed.
+
+**Multi-cloud** — Deploy to AWS, Cloudflare, or both from the same config file.
+
+**Open source** — SST is fully open source and community-driven.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get started with SST in 5 minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the SST CLI
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/concepts/components">
+    Learn about SST's core concepts
+  </Card>
+  <Card title="Examples" icon="code" href="https://github.com/sst/sst/tree/dev/examples">
+    Browse example applications
+  </Card>
+</CardGroup>

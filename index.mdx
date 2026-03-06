@@ -1,97 +1,190 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "SST"
+description: "Build full-stack apps on your own infrastructure"
 ---
 
-## Setting up
+<div style={{
+  background: 'linear-gradient(135deg, #1d1d2d 0%, #2f2f5c 100%)',
+  padding: '80px 40px',
+  borderRadius: '12px',
+  marginBottom: '40px',
+  textAlign: 'center'
+}}>
+  <h1 style={{
+    fontSize: '48px',
+    fontWeight: '700',
+    fontFamily: 'Inter, monospace',
+    color: '#d4d4e4',
+    marginBottom: '20px'
+  }}>
+    Build full-stack apps on your own infrastructure
+  </h1>
+  <p style={{
+    fontSize: '20px',
+    color: '#8c9495',
+    marginBottom: '40px',
+    maxWidth: '800px',
+    margin: '0 auto 40px'
+  }}>
+    SST makes it easy to build modern full-stack applications on AWS, Cloudflare, and Vercel using TypeScript, with live development and type-safe infrastructure.
+  </p>
+  <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+    <a href="/quickstart" style={{
+      background: 'transparent',
+      color: '#d4d4e4',
+      border: '2px solid #d4d4e4',
+      padding: '12px 32px',
+      borderRadius: '0px',
+      fontWeight: '600',
+      textDecoration: 'none',
+      display: 'inline-block'
+    }}>
+      Get Started
+    </a>
+    <a href="https://github.com/anomalyco/sst" style={{
+      background: 'transparent',
+      color: '#8c9495',
+      border: '2px solid #8c9495',
+      padding: '12px 32px',
+      borderRadius: '0px',
+      fontWeight: '600',
+      textDecoration: 'none',
+      display: 'inline-block'
+    }}>
+      View on GitHub
+    </a>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+## Key Features
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Infrastructure as Code" icon="code" href="/concepts/components">
+    Define your infrastructure using TypeScript with full type safety and autocompletion
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Live Development" icon="bolt" href="/concepts/live-development">
+    Test your Lambda functions locally with hot reloading and instant feedback
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Multi-Cloud Support" icon="cloud" href="/guides/providers">
+    Deploy to AWS, Cloudflare, and Vercel with a unified API
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Type-Safe Linking" icon="link" href="/concepts/linking">
+    Connect your resources with automatic type inference and IntelliSense
   </Card>
-</Columns>
+  <Card title="Built-in Auth" icon="shield" href="/components/aws/auth">
+    Add authentication and authorization to your apps with minimal configuration
+  </Card>
+  <Card title="Real-time Support" icon="broadcast-tower" href="/components/aws/realtime">
+    Build real-time features with WebSockets and subscriptions
+  </Card>
+  <Card title="Secrets Management" icon="key" href="/guides/secrets-management">
+    Manage secrets securely across stages and environments
+  </Card>
+  <Card title="Console" icon="chart-line" href="/concepts/console">
+    Monitor and debug your applications with the SST Console
+  </Card>
+</CardGroup>
 
-## Create beautiful pages
+## Quick Start
 
-Everything you need to create world-class documentation.
+Get up and running with SST in minutes:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<Steps>
+  <Step title="Install SST">
+    <CodeGroup>
+    ```bash npm
+    npm install sst
+    ```
+    ```bash yarn
+    yarn add sst
+    ```
+    ```bash pnpm
+    pnpm add sst
+    ```
+    </CodeGroup>
+  </Step>
+  
+  <Step title="Initialize your project">
+    ```bash
+    npx sst init
+    ```
+  </Step>
+  
+  <Step title="Start developing">
+    ```bash
+    npx sst dev
+    ```
+  </Step>
+</Steps>
 
-## Need inspiration?
+## Popular Components
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+Build with SST's powerful component library:
+
+<CardGroup cols={3}>
+  <Card title="Function" icon="function" href="/components/aws/function">
+    Deploy Lambda functions with automatic bundling
+  </Card>
+  <Card title="Next.js" icon="react" href="/components/aws/nextjs">
+    Deploy Next.js apps to AWS with SSR support
+  </Card>
+  <Card title="API Gateway" icon="globe" href="/components/aws/apigatewayv2">
+    Create HTTP and WebSocket APIs
+  </Card>
+  <Card title="Bucket" icon="database" href="/components/aws/bucket">
+    Manage S3 buckets with event notifications
+  </Card>
+  <Card title="Database" icon="table" href="/components/aws/postgres">
+    Deploy PostgreSQL and Aurora databases
+  </Card>
+  <Card title="Queue" icon="list" href="/components/aws/queue">
+    Process background jobs with SQS
+  </Card>
+</CardGroup>
+
+## Framework Integrations
+
+SST works seamlessly with your favorite frameworks:
+
+<CardGroup cols={4}>
+  <Card title="Next.js" icon="react" href="/components/aws/nextjs">
+    Full-stack React framework
+  </Card>
+  <Card title="Remix" icon="music" href="/components/aws/remix">
+    Full-stack web framework
+  </Card>
+  <Card title="Astro" icon="rocket" href="/components/aws/astro">
+    Modern static site generator
+  </Card>
+  <Card title="SvelteKit" icon="fire" href="/components/aws/nextjs">
+    Full-stack Svelte framework
+  </Card>
+</CardGroup>
+
+## Learn More
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book" href="/concepts/components">
+    Understand the fundamentals of SST
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Explore all available CLI commands
+  </Card>
+  <Card title="Components" icon="puzzle-piece" href="/components/overview">
+    Browse the complete component library
+  </Card>
+  <Card title="SDK Reference" icon="code" href="/sdk/overview">
+    Access resources from your application code
+  </Card>
+</CardGroup>
+
+## Community & Support
+
+<CardGroup cols={2}>
+  <Card title="GitHub" icon="github" href="https://github.com/anomalyco/sst">
+    Star us on GitHub and contribute to the project
+  </Card>
+  <Card title="Discord" icon="discord" href="https://sst.dev/discord">
+    Join our community and get help from other developers
+  </Card>
+</CardGroup>

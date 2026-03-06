@@ -1,0 +1,88 @@
+---
+title: Queue
+description: Reference doc for the `sst.cloudflare.Queue` component.
+---
+
+The `Queue` component lets you add a [Cloudflare Queue](https://developers.cloudflare.com/queues/) to your app.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const queue = new sst.cloudflare.Queue("MyQueue");
+```
+
+## Properties
+
+### id
+
+<Property type="Output<string>">
+  The queue ID.
+
+  ```ts
+  console.log(queue.id);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  #### queue
+
+  <Property type="cloudflare.Queue">
+    The Cloudflare Queue.
+  </Property>
+</Property>
+
+## SDK
+
+Send messages to the queue from your worker:
+
+```ts title="src/producer.ts"
+import { Resource } from "sst";
+
+export default {
+  async fetch(request, env) {
+    await env.MyQueue.send({ message: "Hello" });
+    return new Response("Message sent");
+  }
+};
+```
+
+Process messages from the queue:
+
+```ts title="src/consumer.ts"
+export default {
+  async queue(batch) {
+    for (const message of batch.messages) {
+      console.log(message.body);
+    }
+  }
+};
+```
+
+## Examples
+
+### Create a queue
+
+```ts title="sst.config.ts"
+const queue = new sst.cloudflare.Queue("MyQueue");
+```
+
+### Subscribe to a queue
+
+```ts title="sst.config.ts"
+const queue = new sst.cloudflare.Queue("MyQueue");
+
+queue.subscribe("src/consumer.ts");
+```
+
+### Link to a worker
+
+```ts title="sst.config.ts"
+const queue = new sst.cloudflare.Queue("MyQueue");
+
+new sst.cloudflare.Worker("MyWorker", {
+  handler: "src/producer.ts",
+  link: [queue]
+});
+```

@@ -1,0 +1,590 @@
+---
+title: Cloud Providers
+description: Add and configure cloud providers in your SST app
+---
+
+SST supports multiple cloud providers through Pulumi and Terraform. This guide shows you how to add and configure providers in your application.
+
+## What are providers?
+
+Providers give you access to cloud resources:
+
+- **AWS** — Lambda, S3, DynamoDB, RDS, etc.
+- **Cloudflare** — Workers, R2, D1, KV, etc.
+- **Vercel** — Projects and deployments
+- **Many more** — 200+ providers available
+
+Providers are automatically installed and configured by SST based on your `sst.config.ts`.
+
+## The home provider
+
+Every SST app has a "home" provider where state is stored:
+
+```ts title="sst.config.ts"
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws", // State stored in S3
+  };
+}
+```
+
+Options:
+- `"aws"` — Store state in S3 (recommended)
+- `"cloudflare"` — Store state in R2  
+- `"local"` — Store state on your machine
+
+<Info>
+The home provider is automatically added to your app. You don't need to explicitly add it to `providers`.
+</Info>
+
+## Adding providers
+
+Add providers using the `sst add` command:
+
+```bash
+sst add aws
+```
+
+This:
+1. Installs the AWS provider package
+2. Adds it to your `sst.config.ts`
+3. Makes AWS resources available
+
+### Available providers
+
+Browse all providers in the [Pulumi Registry](https://www.pulumi.com/registry/):
+
+```bash
+sst add cloudflare
+sst add vercel
+sst add github  
+sst add datadog
+sst add mongodb
+```
+
+## Configuring providers
+
+Specify providers in your config:
+
+```ts title="sst.config.ts"
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    providers: {
+      aws: {
+        region: "us-west-2",
+      },
+      cloudflare: "5.37.1",
+    },
+  };
+}
+```
+
+### Simple version
+
+Just specify a version:
+
+```ts
+providers: {
+  aws: "6.27.0",
+  cloudflare: "5.37.1",
+}
+```
+
+### With configuration
+
+Add provider-specific settings:
+
+```ts
+providers: {
+  aws: {
+    version: "6.27.0",
+    region: "us-west-2",
+    profile: "my-profile",
+  },
+  cloudflare: {
+    version: "5.37.1",
+    accountId: "abc123",
+  },
+}
+```
+
+## AWS provider
+
+### Basic configuration
+
+```ts
+providers: {
+  aws: {
+    region: "us-east-1",
+  },
+}
+```
+
+### Multiple regions
+
+Use multiple AWS providers for multi-region:
+
+```ts
+import * as aws from "@pulumi/aws";
+
+// Default region
+const usEast = new aws.Provider("us-east-1", {
+  region: "us-east-1",
+});
+
+// Secondary region  
+const euWest = new aws.Provider("eu-west-1", {
+  region: "eu-west-1",
+});
+
+// Use specific provider
+const bucket = new aws.s3.Bucket("MyBucket", {}, {
+  provider: euWest,
+});
+```
+
+### Using profiles
+
+```ts
+providers: {
+  aws: {
+    region: "us-east-1",
+    profile: "production",
+  },
+}
+```
+
+Or use environment variables:
+
+```bash
+AWS_PROFILE=production sst deploy
+```
+
+### Configuration options
+
+See all [AWS provider options](https://www.pulumi.com/registry/packages/aws/api-docs/provider/#inputs) in the Pulumi docs.
+
+Common options:
+- `region` — AWS region
+- `profile` — AWS CLI profile
+- `allowedAccountIds` — Restrict to specific accounts
+- `defaultTags` — Apply tags to all resources
+
+## Cloudflare provider
+
+### Basic configuration
+
+```ts
+providers: {
+  cloudflare: {
+    accountId: "abc123",
+  },
+}
+```
+
+### With API token
+
+```ts
+providers: {
+  cloudflare: {
+    version: "5.37.1",
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
+    apiToken: process.env.CLOUDFLARE_API_TOKEN,
+  },
+}
+```
+
+Or use environment variables:
+
+```bash
+CLOUDFLARE_ACCOUNT_ID=abc123 \
+CLOUDFLARE_API_TOKEN=xyz789 \
+sst deploy
+```
+
+### Configuration options
+
+See all [Cloudflare provider options](https://www.pulumi.com/registry/packages/cloudflare/api-docs/provider/#inputs).
+
+Common options:
+- `accountId` — Cloudflare account ID
+- `apiToken` — API token for authentication
+- `apiKey` — Alternative to API token
+- `email` — Email (with API key)
+
+## Installing providers
+
+After adding or changing providers, run:
+
+```bash
+sst install
+```
+
+This installs provider packages from npm:
+
+- `@pulumi/aws`
+- `@pulumi/cloudflare`
+- `@pulumi/vercel`
+- etc.
+
+<Tip>
+SST automatically runs `sst install` before deploying if providers changed.
+</Tip>
+
+## Provider versions
+
+### Lock versions
+
+Pin to specific versions:
+
+```ts
+providers: {
+  aws: "6.27.0",
+  cloudflare: "5.37.1",
+}
+```
+
+### Version ranges
+
+Use semver ranges:
+
+```ts
+providers: {
+  aws: "^6.27.0", // Any 6.x.x version
+  cloudflare: "~5.37.0", // Any 5.37.x version
+}
+```
+
+### Latest version
+
+Omit version to use latest:
+
+```ts
+providers: {
+  aws: {},
+}
+```
+
+<Warning>
+Using latest versions can cause unexpected changes. Pin versions for production.
+</Warning>
+
+## Using provider resources
+
+After adding a provider, import and use its resources:
+
+```ts title="sst.config.ts"
+import * as aws from "@pulumi/aws";
+import * as cloudflare from "@pulumi/cloudflare";
+
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      home: "aws",
+      providers: {
+        aws: "6.27.0",
+        cloudflare: "5.37.1",
+      },
+    };
+  },
+  async run() {
+    // SST components
+    const bucket = new sst.aws.Bucket("MyBucket");
+    
+    // Pulumi AWS resources
+    const table = new aws.dynamodb.Table("MyTable", {
+      attributes: [{ name: "id", type: "S" }],
+      hashKey: "id",
+      billingMode: "PAY_PER_REQUEST",
+    });
+    
+    // Cloudflare resources
+    const worker = new sst.cloudflare.Worker("MyWorker", {
+      handler: "src/worker.ts",
+    });
+  },
+});
+```
+
+<Info>
+You don't need to import provider packages in `sst.config.ts`. SST manages them automatically.
+</Info>
+
+## Multi-cloud apps
+
+Use multiple providers in one app:
+
+```ts title="sst.config.ts"
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      home: "aws",
+      providers: {
+        aws: "6.27.0",
+        cloudflare: "5.37.1",
+      },
+    };
+  },
+  async run() {
+    // AWS resources
+    const table = new sst.aws.Dynamo("MyTable", {
+      fields: { id: "string" },
+      primaryIndex: { hashKey: "id" },
+    });
+    
+    // Cloudflare resources
+    const worker = new sst.cloudflare.Worker("MyWorker", {
+      handler: "src/worker.ts",
+      link: [table], // Link across providers
+    });
+  },
+});
+```
+
+Resources from different providers can link to each other.
+
+## Custom registries
+
+Use a custom npm registry:
+
+```bash
+NPM_REGISTRY=https://my-registry.com sst add aws
+```
+
+Or set in `.npmrc`:
+
+```ini title=".npmrc"
+registry=https://my-registry.com
+```
+
+### With authentication
+
+SST supports `.npmrc` authentication:
+
+```ini title=".npmrc"
+registry=https://my-registry.com
+//my-registry.com/:_authToken=abc123
+```
+
+Or use username/password:
+
+```ini title=".npmrc"
+//my-registry.com/:username=user
+//my-registry.com/:_password=pass
+```
+
+## Provider packages
+
+SST installs providers as npm packages:
+
+```json title="package.json"
+{
+  "dependencies": {
+    "@pulumi/aws": "^6.27.0",
+    "@pulumi/cloudflare": "^5.37.1"
+  }
+}
+```
+
+You can also install them manually:
+
+```bash
+npm install @pulumi/aws @pulumi/cloudflare
+```
+
+Then add to your config:
+
+```ts
+providers: {
+  aws: "6.27.0",
+  cloudflare: "5.37.1",
+}
+```
+
+## Terraform providers
+
+SST also supports Terraform providers through Pulumi:
+
+```bash
+sst add terraform-provider/random
+```
+
+See the [Pulumi docs](https://www.pulumi.com/docs/intro/concepts/resources/providers/) for details.
+
+## Provider configuration per stage
+
+Use different settings per stage:
+
+```ts
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    providers: {
+      aws: {
+        region: input.stage === "production" ? "us-east-1" : "us-west-2",
+      },
+    },
+  };
+}
+```
+
+## Troubleshooting
+
+### Provider not found
+
+If SST can't find a provider:
+
+1. Check spelling in `providers` config
+2. Run `sst install` to install packages
+3. Verify the provider exists in [Pulumi Registry](https://www.pulumi.com/registry/)
+
+### Version conflicts
+
+If you get version conflicts:
+
+1. Pin all provider versions:
+   ```ts
+   providers: {
+     aws: "6.27.0",
+     cloudflare: "5.37.1",
+   }
+   ```
+
+2. Remove `node_modules` and reinstall:
+   ```bash
+   rm -rf node_modules
+   npm install
+   sst install
+   ```
+
+### Authentication errors
+
+For AWS authentication errors:
+
+```bash
+# Verify credentials
+aws sts get-caller-identity
+
+# Set credentials
+aws configure
+
+# Or use environment variables
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+```
+
+For Cloudflare:
+
+```bash
+# Set environment variables
+export CLOUDFLARE_ACCOUNT_ID=abc123
+export CLOUDFLARE_API_TOKEN=xyz789
+```
+
+### Provider package errors
+
+If provider packages fail to install:
+
+1. Check npm registry access
+2. Try different registry:
+   ```bash
+   NPM_REGISTRY=https://registry.npmjs.org sst install
+   ```
+3. Install manually:
+   ```bash
+   npm install @pulumi/aws
+   ```
+
+## Best practices
+
+### Pin versions in production
+
+Always pin provider versions:
+
+```ts
+// Good
+providers: {
+  aws: "6.27.0",
+}
+
+// Avoid
+providers: {
+  aws: {}, // Uses latest
+}
+```
+
+### Use environment variables for secrets
+
+Don't hardcode credentials:
+
+```ts
+// Good
+providers: {
+  cloudflare: {
+    apiToken: process.env.CLOUDFLARE_API_TOKEN,
+  },
+}
+
+// Avoid
+providers: {
+  cloudflare: {
+    apiToken: "hardcoded-token", // Don't do this!
+  },
+}
+```
+
+### Document required providers
+
+List providers in your README:
+
+```md title="README.md"
+## Providers
+
+This app uses:
+- AWS (`@pulumi/aws` v6.27.0)
+- Cloudflare (`@pulumi/cloudflare` v5.37.1)
+
+Set these environment variables:
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+```
+
+### Keep providers updated
+
+Regularly update provider versions:
+
+```bash
+# Check for updates
+npm outdated @pulumi/aws @pulumi/cloudflare
+
+# Update providers
+sst add aws # Installs latest
+sst add cloudflare
+```
+
+Test thoroughly after updating.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Components" icon="cubes" href="/concepts/components">
+    Learn about SST components
+  </Card>
+  <Card title="AWS Resources" icon="aws" href="/docs/component/aws">
+    Browse AWS components
+  </Card>
+  <Card title="Cloudflare Resources" icon="cloudflare" href="/docs/component/cloudflare">
+    Browse Cloudflare components
+  </Card>
+  <Card title="Pulumi Registry" icon="book" href="https://www.pulumi.com/registry/">
+    Explore all providers
+  </Card>
+</CardGroup>

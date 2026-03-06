@@ -1,0 +1,357 @@
+---
+title: Components
+description: Build your infrastructure with SST components
+---
+
+Components are the building blocks of your SST application. They represent cloud resources like functions, databases, APIs, and more.
+
+## What are components?
+
+Components are TypeScript classes that create and manage cloud resources. SST provides high-level components for common use cases, and you can also use low-level Pulumi resources when needed.
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket");
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+});
+```
+
+Each component:
+
+- Has a **unique name** within your app
+- Takes **configuration props** specific to that resource type
+- Creates the necessary **cloud resources** automatically
+- Can be **linked** to other components
+
+## Built-in components
+
+SST provides components for both AWS and Cloudflare. Here are some commonly used ones:
+
+### Compute
+
+<CardGroup cols={2}>
+  <Card title="Function" icon="bolt" href="/docs/component/aws/function">
+    AWS Lambda functions with live development
+  </Card>
+  <Card title="Service" icon="server" href="/docs/component/aws/service">
+    Long-running containers on ECS
+  </Card>
+  <Card title="Worker" icon="worker" href="/docs/component/cloudflare/worker">
+    Cloudflare Workers
+  </Card>
+  <Card title="Cron" icon="clock" href="/docs/component/aws/cron">
+    Scheduled tasks
+  </Card>
+</CardGroup>
+
+### APIs
+
+<CardGroup cols={2}>
+  <Card title="ApiGatewayV2" icon="route" href="/docs/component/aws/apigatewayv2">
+    HTTP APIs with API Gateway
+  </Card>
+  <Card title="AppSync" icon="graphql" href="/docs/component/aws/appsync">
+    GraphQL APIs
+  </Card>
+  <Card title="Realtime" icon="bolt" href="/docs/component/aws/realtime">
+    WebSocket connections with pub/sub
+  </Card>
+</CardGroup>
+
+### Frontends
+
+<CardGroup cols={2}>
+  <Card title="Nextjs" icon="react" href="/docs/component/aws/nextjs">
+    Next.js applications
+  </Card>
+  <Card title="Remix" icon="remix" href="/docs/component/aws/remix">
+    Remix applications
+  </Card>
+  <Card title="Astro" icon="astro" href="/docs/component/aws/astro">
+    Astro sites
+  </Card>
+  <Card title="StaticSite" icon="html5" href="/docs/component/aws/static-site">
+    Static websites
+  </Card>
+</CardGroup>
+
+### Storage
+
+<CardGroup cols={2}>
+  <Card title="Bucket" icon="database" href="/docs/component/aws/bucket">
+    S3 buckets for object storage
+  </Card>
+  <Card title="Dynamo" icon="table" href="/docs/component/aws/dynamo">
+    DynamoDB tables
+  </Card>
+  <Card title="Postgres" icon="postgresql" href="/docs/component/aws/postgres">
+    RDS Postgres databases
+  </Card>
+  <Card title="Redis" icon="redis" href="/docs/component/aws/redis">
+    ElastiCache Redis clusters
+  </Card>
+</CardGroup>
+
+### Queues & Events
+
+<CardGroup cols={2}>
+  <Card title="Queue" icon="list" href="/docs/component/aws/queue">
+    SQS queues with Lambda subscribers
+  </Card>
+  <Card title="SnsTopic" icon="bell" href="/docs/component/aws/sns-topic">
+    SNS topics for pub/sub
+  </Card>
+  <Card title="Bus" icon="bus" href="/docs/component/aws/bus">
+    EventBridge event buses
+  </Card>
+</CardGroup>
+
+## Component structure
+
+Every component follows this pattern:
+
+```ts
+const resource = new sst.aws.ComponentName("LogicalName", {
+  // Configuration props
+  prop1: "value1",
+  prop2: "value2",
+});
+```
+
+- **Logical name** — A unique identifier within your app (e.g., `"MyBucket"`)
+- **Props** — Configuration options specific to the component
+
+### Logical names
+
+The logical name is how you reference the component in your code and in the SST Console. It must be unique within your app.
+
+```ts
+const userBucket = new sst.aws.Bucket("UserBucket");
+const assetBucket = new sst.aws.Bucket("AssetBucket");
+```
+
+<Warning>
+Changing a component's logical name will cause SST to delete the old resource and create a new one. Make sure to use consistent names.
+</Warning>
+
+### Physical names
+
+SST automatically generates physical names for your resources by prefixing them with your app name and stage:
+
+```bash
+# Logical name: "MyBucket"
+# Physical name: "my-app-dev-mybucket-a1b2c3d4"
+```
+
+This ensures:
+- Resources don't conflict across stages
+- Resources are identifiable in the AWS Console
+- Names comply with AWS naming restrictions
+
+## Using components
+
+Define components in the `run` function of your `sst.config.ts`:
+
+```ts title="sst.config.ts" {11-23}
+/// <reference path="./.sst/platform/config.d.ts" />
+
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      home: "aws",
+    };
+  },
+  async run() {
+    // Create an S3 bucket
+    const bucket = new sst.aws.Bucket("MyBucket", {
+      public: true,
+    });
+
+    // Create a Lambda function
+    const api = new sst.aws.Function("MyApi", {
+      handler: "src/api.handler",
+      link: [bucket],
+      url: true,
+    });
+
+    return { api: api.url };
+  },
+});
+```
+
+### Accessing properties
+
+Component properties are Pulumi Outputs, which means they're computed during deployment:
+
+```ts
+const bucket = new sst.aws.Bucket("MyBucket");
+
+// Access the bucket name (this is an Output<string>)
+const bucketName = bucket.name;
+
+// Use .apply() to access the actual value
+bucketName.apply(name => {
+  console.log("Bucket name:", name);
+});
+```
+
+<Info>
+Outputs ensure that dependencies between resources are tracked correctly during deployment.
+</Info>
+
+### Subscribing to events
+
+Many components support subscribing to events:
+
+```ts
+const bucket = new sst.aws.Bucket("MyBucket");
+
+// Subscribe to object creation events
+bucket.subscribe("src/subscriber.handler", {
+  events: ["s3:ObjectCreated:*"],
+});
+```
+
+```ts
+const queue = new sst.aws.Queue("MyQueue");
+
+// Subscribe with a function
+queue.subscribe("src/worker.handler");
+```
+
+## Using Pulumi resources
+
+You can use any Pulumi resource alongside SST components:
+
+```ts
+import * as aws from "@pulumi/aws";
+
+// SST component
+const bucket = new sst.aws.Bucket("MyBucket");
+
+// Pulumi resource
+const table = new aws.dynamodb.Table("MyTable", {
+  attributes: [
+    { name: "id", type: "S" },
+  ],
+  hashKey: "id",
+  billingMode: "PAY_PER_REQUEST",
+});
+```
+
+<Tip>
+SST components are built on top of Pulumi, so they work seamlessly together.
+</Tip>
+
+## Component transforms
+
+You can use transforms to modify how components are created:
+
+```ts title="sst.config.ts"
+// Apply tags to all Lambda functions
+$transform(sst.aws.Function, (args) => {
+  args.tags = {
+    ...args.tags,
+    team: "backend",
+  };
+});
+
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  // Will automatically have team: "backend" tag
+});
+```
+
+Transforms let you:
+- Enforce organizational standards
+- Apply consistent configurations
+- Modify default behaviors
+
+## Dev mode behavior
+
+Some components behave differently in `sst dev`:
+
+- **Functions** — Run locally with Live Lambda Development
+- **Frontends** — Start their dev server instead of deploying
+- **Services** — Run their dev command instead of deploying to ECS
+- **Databases** — Can connect to local instances (Postgres, Redis)
+
+You can customize dev mode behavior with the `dev` prop:
+
+```ts
+const site = new sst.aws.Nextjs("MySite", {
+  dev: {
+    command: "npm run dev",
+    directory: "packages/web",
+  },
+});
+```
+
+## Best practices
+
+### Use meaningful names
+
+Give components descriptive logical names:
+
+```ts
+// Good
+const userTable = new sst.aws.Dynamo("UserTable");
+const uploadBucket = new sst.aws.Bucket("UploadBucket");
+
+// Avoid
+const table1 = new sst.aws.Dynamo("Table1");
+const bucket = new sst.aws.Bucket("Bucket");
+```
+
+### Group related resources
+
+Organize related components together:
+
+```ts
+// Auth resources
+const userPool = new sst.aws.CognitoUserPool("UserPool");
+const userTable = new sst.aws.Dynamo("UserTable");
+
+// Storage resources
+const uploadBucket = new sst.aws.Bucket("UploadBucket");
+const assetBucket = new sst.aws.Bucket("AssetBucket");
+```
+
+### Use linking
+
+Prefer linking over manual permissions:
+
+```ts
+// Good - automatic permissions
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  link: [bucket],
+});
+
+// Avoid - manual permissions
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  permissions: [{
+    actions: ["s3:*"],
+    resources: [bucket.arn],
+  }],
+});
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Linking" icon="link" href="/concepts/linking">
+    Connect components together
+  </Card>
+  <Card title="Config" icon="file-code" href="/concepts/config">
+    Learn about sst.config.ts
+  </Card>
+  <Card title="Component Reference" icon="book" href="/docs/components">
+    Browse all components
+  </Card>
+  <Card title="Providers" icon="plug" href="/guides/providers">
+    Add cloud providers
+  </Card>
+</CardGroup>

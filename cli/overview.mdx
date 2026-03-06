@@ -1,0 +1,179 @@
+---
+title: CLI
+description: Reference doc for the SST CLI.
+---
+
+The SST CLI helps you manage your SST apps. It allows you to develop, deploy, and manage your applications.
+
+## Installation
+
+### Node projects
+
+If you are using SST as a part of your Node project, we recommend installing it locally.
+
+```bash
+npm install sst
+```
+
+Then run the CLI through your package manager.
+
+```bash
+npm sst <command>
+```
+
+### Global install
+
+If you are not using Node, you can install the CLI globally.
+
+```bash
+curl -fsSL https://sst.dev/install | bash
+```
+
+To install a specific version:
+
+```bash
+curl -fsSL https://sst.dev/install | VERSION=0.0.403 bash
+```
+
+### Package managers
+
+<Note>
+The CLI currently supports macOS, Linux, and WSL. Windows support is in beta.
+</Note>
+
+#### macOS
+
+The CLI is available via a Homebrew Tap, and as downloadable binary in the [releases](https://github.com/sst/sst/releases/latest).
+
+```bash
+brew install sst/tap/sst
+
+# Upgrade
+brew upgrade sst
+```
+
+You might have to run `brew upgrade sst`, before the update.
+
+#### Linux
+
+The CLI is available as downloadable binaries in the [releases](https://github.com/sst/sst/releases/latest). Download the `.deb` or `.rpm` and install with `sudo dpkg -i` and `sudo rpm -i`.
+
+For Arch Linux, it's available in the [aur](https://aur.archlinux.org/packages/sst-bin).
+
+## Usage
+
+Once installed you can run the commands using:
+
+```bash
+sst [command]
+```
+
+## Global flags
+
+The CLI takes a few global flags that apply to all commands.
+
+### `--stage`
+
+Set the stage the CLI is running on.
+
+```bash
+sst deploy --stage production
+```
+
+The stage is a string that is used to prefix the resources in your app. This allows you to have multiple _environments_ of your app running in the same account.
+
+<Note>
+Changing the stage will redeploy your app to a new stage with new resources. The old resources will still be around in the old stage.
+</Note>
+
+You can also use the `SST_STAGE` environment variable:
+
+```bash
+SST_STAGE=dev sst deploy
+```
+
+This can also be declared in a `.env` file or in the CLI session.
+
+If the stage is not passed in, then the CLI will:
+
+1. Use the username on the local machine.
+   - If the username is `root`, `admin`, `prod`, `dev`, `production`, then it will prompt for a stage name.
+2. Store this in the `.sst/stage` file and reads from it in the future.
+
+This stored stage is called your **personal stage**.
+
+### `--verbose`
+
+Prints extra information to the log files in the `.sst/` directory.
+
+```bash
+sst deploy --verbose
+```
+
+To also view this on the screen, use the `--print-logs` flag.
+
+### `--print-logs`
+
+Print the logs to the screen. These are logs that are written to the `.sst/` directory.
+
+```bash
+sst deploy --print-logs
+```
+
+It can also be set using the `SST_PRINT_LOGS` environment variable:
+
+```bash
+SST_PRINT_LOGS=1 sst deploy
+```
+
+This is useful when running in a CI environment.
+
+### `--config`
+
+Optionally, pass in a path to the SST config file. This defaults to `sst.config.ts` in the current directory.
+
+```bash
+sst --config path/to/config.ts deploy
+```
+
+This is useful when your monorepo has multiple SST apps in it. You can run the SST CLI for a specific app by passing in the path to its config file.
+
+### `--help`
+
+Prints help for the given command.
+
+```bash
+sst deploy --help
+```
+
+Or the global help:
+
+```bash
+sst --help
+```
+
+## Environment variables
+
+You can access any environment variables set in the CLI in your `sst.config.ts` file. For example, running:
+
+```bash
+ENV_VAR=123 sst deploy
+```
+
+Will let you access `ENV_VAR` through `process.env.ENV_VAR`.
+
+## Commands
+
+The CLI provides the following commands:
+
+- [`sst init`](/docs/reference/cli/init) - Initialize a new project
+- [`sst dev`](/docs/reference/cli/dev) - Run in development mode
+- [`sst deploy`](/docs/reference/cli/deploy) - Deploy your application
+- [`sst add`](/docs/reference/cli/add) - Add a new provider
+- [`sst install`](/docs/reference/cli/install) - Install all the providers
+- [`sst secret`](/docs/reference/cli/secret) - Manage secrets
+- [`sst shell`](/docs/reference/cli/shell) - Run a command with linked resources
+- [`sst remove`](/docs/reference/cli/remove) - Remove your application
+- [`sst refresh`](/docs/reference/cli/refresh) - Refresh the local app state
+- [`sst unlock`](/docs/reference/cli/unlock) - Clear any locks on the app state
+- [`sst upgrade`](/docs/reference/cli/upgrade) - Upgrade the CLI

@@ -1,0 +1,78 @@
+---
+title: sst init
+description: Reference doc for the `sst init` command.
+---
+
+Initialize a new project in the current directory. This will create a `sst.config.ts` and `sst install` your providers.
+
+If this is run in a Next.js, Remix, Astro, or SvelteKit project, it'll init SST in drop-in mode.
+
+```bash
+sst init
+```
+
+## Options
+
+### `--yes`
+
+Skip interactive confirmation for detected framework.
+
+```bash
+sst init --yes
+```
+
+## How it works
+
+When you run `sst init`, the CLI will:
+
+1. Detect any existing framework in your project (Next.js, Remix, Astro, SvelteKit, etc.)
+2. Create an appropriate `sst.config.ts` file for your project
+3. Modify your `tsconfig.json` if needed (for frameworks like Next.js)
+4. Add SST to your `package.json`
+5. Install the required providers
+
+## Framework detection
+
+The `sst init` command automatically detects the following frameworks:
+
+- **Next.js** - Detects `next.config.*` files
+- **React Router** - Detects `react-router.config.*` files
+- **Astro** - Detects `astro.config.*` files
+- **SolidStart** - Detects `app.config.*` with `@solidjs/start`
+- **TanStack Start** - Detects `app.config.*` with `@tanstack/`
+- **Nuxt** - Detects `nuxt.config.*` files
+- **SvelteKit** - Detects `svelte.config.*` files
+- **Remix** - Detects `remix.config.*` or `vite.config.*` with `@remix-run/dev`
+- **Analog** - Detects `vite.config.*` with `@analogjs/platform`
+- **Angular** - Detects `angular.json` files
+
+If no framework is detected, you'll be prompted to choose between:
+- A vanilla template (for non-framework projects)
+- A JavaScript template
+
+## Examples
+
+### Initialize with auto-confirmation
+
+Skip the interactive prompt and automatically proceed with the detected configuration:
+
+```bash
+sst init --yes
+```
+
+### Initialize in a Next.js project
+
+When run in a Next.js project, this will:
+- Create an `sst.config.ts`
+- Modify the `tsconfig.json`
+- Add `sst` to `package.json`
+
+```bash
+cd my-nextjs-app
+sst init
+```
+
+## Related
+
+- [`sst install`](/docs/reference/cli/install) - Install providers after modifying your config
+- [`sst add`](/docs/reference/cli/add) - Add a new provider to your project

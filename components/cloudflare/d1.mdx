@@ -1,0 +1,72 @@
+---
+title: D1
+description: Reference doc for the `sst.cloudflare.D1` component.
+---
+
+The `D1` component lets you add a [Cloudflare D1 database](https://developers.cloudflare.com/d1/) to your app.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const database = new sst.cloudflare.D1("MyDatabase");
+```
+
+## Properties
+
+### id
+
+<Property type="Output<string>">
+  The D1 database ID.
+
+  ```ts
+  console.log(database.id);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  #### database
+
+  <Property type="cloudflare.D1Database">
+    The Cloudflare D1 database.
+  </Property>
+</Property>
+
+## SDK
+
+Access the D1 database in your worker:
+
+```ts title="src/worker.ts"
+import { Resource } from "sst";
+
+export default {
+  async fetch(request, env) {
+    const result = await env.MyDatabase
+      .prepare("SELECT * FROM users WHERE id = ?")
+      .bind(1)
+      .first();
+    
+    return Response.json(result);
+  }
+};
+```
+
+## Examples
+
+### Create a D1 database
+
+```ts title="sst.config.ts"
+const database = new sst.cloudflare.D1("MyDatabase");
+```
+
+### Link to a worker
+
+```ts title="sst.config.ts"
+const database = new sst.cloudflare.D1("MyDatabase");
+
+new sst.cloudflare.Worker("MyWorker", {
+  handler: "src/worker.ts",
+  link: [database]
+});
+```

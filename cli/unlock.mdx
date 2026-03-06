@@ -1,0 +1,60 @@
+---
+title: sst unlock
+description: Reference doc for the `sst unlock` command.
+---
+
+Clear any locks on the app state.
+
+```bash
+sst unlock
+```
+
+## How it works
+
+When you run `sst deploy`, it acquires a lock on your state file to prevent concurrent deploys.
+
+However, if something unexpectedly kills the `sst deploy` process, or if you manage to run `sst deploy` concurrently, the lock might not be released.
+
+This should not usually happen, but it can prevent you from deploying. You can run `sst unlock` to release the lock.
+
+## When to use
+
+You might need to run `sst unlock` if:
+
+- A deploy process was killed unexpectedly (e.g., CI timeout, manual termination)
+- You see an error about the state being locked
+- Multiple deploy processes were accidentally run at the same time
+- The previous deploy crashed without cleaning up
+
+## Examples
+
+### Unlock your personal stage
+
+```bash
+sst unlock
+```
+
+### Unlock a specific stage
+
+```bash
+sst unlock --stage production
+```
+
+## Important notes
+
+### Only use when necessary
+
+Only run `sst unlock` when you're certain no other deploy process is running. If you unlock while a deploy is in progress, it could lead to state corruption.
+
+### Verify no active deploys
+
+Before running `sst unlock`, make sure:
+- No `sst deploy` or `sst dev` commands are running
+- CI/CD pipelines are not actively deploying
+- No other team members are deploying to the same stage
+
+## Related
+
+- [`sst deploy`](/docs/reference/cli/deploy) - Deploy your application
+- [`sst refresh`](/docs/reference/cli/refresh) - Refresh your app state
+- [State documentation](/docs/state) - Learn more about SST state

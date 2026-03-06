@@ -1,0 +1,218 @@
+---
+title: "Resource (JS/TS)"
+description: "Access linked resources in JavaScript and TypeScript"
+---
+
+The `Resource` object provides type-safe access to all resources you've linked in your infrastructure code.
+
+## Import
+
+```typescript
+import { Resource } from "sst";
+```
+
+## Usage
+
+Access any linked resource by its name:
+
+```typescript
+import { Resource } from "sst";
+
+// Access a bucket
+const bucketName = Resource.MyBucket.name;
+
+// Access an API
+const apiUrl = Resource.MyApi.url;
+
+// Access a database
+const dbHost = Resource.MyPostgres.host;
+const dbPort = Resource.MyPostgres.port;
+```
+
+## How It Works
+
+The `Resource` object is a Proxy that:
+
+1. Reads linked resource data from environment variables
+2. Throws helpful errors if you try to access unlinked resources
+3. Provides full TypeScript type definitions
+
+### Environment Variables
+
+SST injects resource information via environment variables prefixed with `SST_RESOURCE_`:
+
+```bash
+SST_RESOURCE_MyBucket={"name":"my-app-mybucket-abc123"}
+SST_RESOURCE_MyApi={"url":"https://api.example.com"}
+```
+
+The SDK automatically parses these and makes them available through `Resource`.
+
+### Error Handling
+
+If you try to access a resource that isn't linked, you'll get a clear error:
+
+```typescript
+const bucket = Resource.UnlinkedBucket;
+// Error: "UnlinkedBucket" is not linked in your sst.config.ts to MyFunction
+```
+
+## Cloudflare Workers
+
+For Cloudflare Workers, use the special helper to inject resources from the `env` object:
+
+```typescript
+import { Resource, fromCloudflareEnv } from "sst";
+
+export default {
+  async fetch(request, env, ctx) {
+    fromCloudflareEnv(env);
+    
+    // Now you can use Resource
+    const bucketName = Resource.MyBucket.name;
+    return new Response("Hello World");
+  }
+};
+```
+
+Or wrap your handler automatically:
+
+```typescript
+import { Resource, wrapCloudflareHandler } from "sst";
+
+export default wrapCloudflareHandler({
+  async fetch(request, env, ctx) {
+    // Resource is automatically available
+    const bucketName = Resource.MyBucket.name;
+    return new Response("Hello World");
+  }
+});
+```
+
+## Type Safety
+
+SST automatically generates TypeScript definitions for your linked resources. The `Resource` type is augmented at build time:
+
+```typescript
+// Auto-generated based on your sst.config.ts
+export interface Resource {
+  App: {
+    name: string;
+    stage: string;
+  };
+  MyBucket: {
+    name: string;
+  };
+  MyApi: {
+    url: string;
+  };
+  // ... all your linked resources
+}
+```
+
+This means you get:
+- Autocomplete for resource names
+- Autocomplete for properties
+- Type errors for invalid access
+
+## App Metadata
+
+The `Resource.App` object is always available and contains metadata about your app:
+
+```typescript
+import { Resource } from "sst";
+
+console.log(Resource.App.name);  // Your app name
+console.log(Resource.App.stage); // Current stage (e.g., "production")
+```
+
+## Examples
+
+### Accessing S3 Buckets
+
+```typescript
+import { Resource } from "sst";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const s3 = new S3Client();
+
+await s3.send(new PutObjectCommand({
+  Bucket: Resource.MyBucket.name,
+  Key: "file.txt",
+  Body: "Hello World"
+}));
+```
+
+### Accessing DynamoDB
+
+```typescript
+import { Resource } from "sst";
+import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+
+const dynamo = new DynamoDBClient();
+
+await dynamo.send(new PutItemCommand({
+  TableName: Resource.MyTable.name,
+  Item: {
+    id: { S: "123" },
+    data: { S: "Hello" }
+  }
+}));
+```
+
+### Accessing APIs
+
+```typescript
+import { Resource } from "sst";
+
+const response = await fetch(`${Resource.MyApi.url}/users`, {
+  method: "GET",
+  headers: {
+    "Content-Type": "application/json"
+  }
+});
+```
+
+### Accessing Secrets
+
+```typescript
+import { Resource } from "sst";
+
+const apiKey = Resource.StripeSecret.value;
+
+// Use the secret
+const response = await fetch("https://api.stripe.com/v1/charges", {
+  headers: {
+    "Authorization": `Bearer ${apiKey}`
+  }
+});
+```
+
+## Local Development
+
+When using `sst dev`, the SDK automatically works with your local resources:
+
+```bash
+sst dev
+```
+
+If you're running a process outside the multiplexer, wrap it:
+
+```bash
+sst dev -- node my-script.js
+```
+
+<Tip>
+The SDK will throw a helpful error if links aren't active, suggesting you use `sst dev -- <command>`.
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Linking" icon="link" href="/concepts/linking">
+    Learn how to link resources in your config
+  </Card>
+  <Card title="Auth SDK" icon="shield" href="/sdk/js/auth">
+    Authentication helpers for the JS/TS SDK
+  </Card>
+</CardGroup>

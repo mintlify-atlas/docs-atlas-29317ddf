@@ -1,0 +1,491 @@
+---
+title: Live Development
+description: Test your Lambda functions locally with instant feedback
+---
+
+Live Lambda Development is SST's killer feature. It lets you test your Lambda functions locally against your deployed infrastructure, with changes reflected instantly—no redeployment needed.
+
+## What is Live Development?
+
+When you run `sst dev`, your Lambda functions don't run in AWS. Instead, they run locally on your machine, but they're invoked whenever the actual deployed Lambda would be triggered.
+
+```bash
+sst dev
+```
+
+This means:
+
+- **Instant feedback** — Changes to your code are reflected immediately
+- **Real infrastructure** — Functions interact with actual AWS resources
+- **Local debugging** — Use breakpoints and your favorite debugging tools
+- **Fast iteration** — No more waiting for deployments
+
+<Info>
+Functions are invoked locally but have the same permissions and access as deployed functions.
+</Info>
+
+## How it works
+
+When you run `sst dev`:
+
+1. SST deploys a **stub Lambda** to AWS for each function
+2. The stub connects to a **websocket** running on your local machine
+3. When AWS invokes the stub, it forwards the request to your local machine
+4. Your local function processes the request and returns the response
+5. The stub sends the response back to AWS
+
+```
+                                                         
+AWS                                Local Machine         
+┌───────────────┐                                             
+│ API Gateway   │                                             
+└──────┬───────┘                                             
+       │ invoke                                              
+       │                                                     
+┌──────┴───────┐              WebSocket         ┌───────────────┐
+│  Stub Lambda  │ ──────────────────────────▶ │  Your Function │
+└───────────────┘                            └───────────────┘
+                                                         
+```
+
+This architecture enables:
+- **Hot reload** — Code changes are picked up immediately
+- **Breakpoints** — Debug with your IDE
+- **Logs** — See console.log output in your terminal
+- **AWS access** — Full access to your AWS resources
+
+## Starting dev mode
+
+Run `sst dev` in your project directory:
+
+```bash
+sst dev
+```
+
+SST will:
+
+1. Deploy your infrastructure to AWS
+2. Start a local development server
+3. Open the multiplexer UI (on Linux/macOS/WSL)
+4. Start watching for code changes
+
+### Multiplexer mode
+
+By default, `sst dev` starts a multiplexer with tabs for different processes:
+
+![sst dev multiplexer](/assets/docs/cli/sst-dev-multiplexer-mode.png)
+
+- **Deploy** — Shows deployment progress and watches for config changes
+- **Functions** — Shows function invocations and logs
+- **Frontend** — Your Next.js/Remix/Astro dev server (if applicable)
+- **Services** — Container dev commands (if applicable)
+- **Tunnel** — VPC bastion tunnel (if applicable)
+
+### Basic mode
+
+If you prefer not to use the multiplexer:
+
+```bash
+sst dev --mode=basic
+```
+
+This only deploys your app and runs functions locally. You'll need to start your frontend separately:
+
+```bash
+# Terminal 1
+sst dev --mode=basic
+
+# Terminal 2
+sst dev -- next dev
+```
+
+### Mono mode
+
+For a single stream of all logs without the tabbed UI:
+
+```bash
+sst dev --mode=mono
+```
+
+This is the default on Windows.
+
+## Live functions
+
+All SST Function components run locally in dev mode:
+
+```ts title="sst.config.ts"
+const api = new sst.aws.Function("MyApi", {
+  handler: "src/api.handler",
+  url: true,
+});
+```
+
+When you invoke this function (via the URL, API Gateway, EventBridge, etc.), the request is sent to your local machine.
+
+### Making changes
+
+Edit your function code:
+
+```ts title="src/api.ts"
+export const handler = async (event: any) => {
+  console.log("Received event:", event);
+  
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      message: "Hello from SST!",
+      timestamp: new Date().toISOString(),
+    }),
+  };
+};
+```
+
+Changes are reflected immediately—no redeployment needed. Just trigger the function again.
+
+### Viewing logs
+
+All `console.log` output appears in the **Functions** tab:
+
+```bash
+[MyApi] Received event: { ... }
+[MyApi] Processing request...
+[MyApi] Done!
+```
+
+## Debugging
+
+### VS Code
+
+Set breakpoints in VS Code:
+
+1. Open your function in VS Code
+2. Click in the gutter to set a breakpoint
+3. Trigger your function
+4. The debugger will pause at your breakpoint
+
+For advanced debugging, create a `.vscode/launch.json`:
+
+```json title=".vscode/launch.json"
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to SST",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}
+```
+
+Then start SST with debugging enabled:
+
+```bash
+NODE_OPTIONS="--inspect" sst dev
+```
+
+### Chrome DevTools
+
+You can also debug with Chrome:
+
+1. Start SST with inspect mode:
+   ```bash
+   NODE_OPTIONS="--inspect" sst dev
+   ```
+
+2. Open Chrome and navigate to `chrome://inspect`
+
+3. Click "inspect" under your Node process
+
+4. Use the Chrome DevTools to debug
+
+## Dev mode for components
+
+Different components behave differently in dev mode:
+
+### Functions
+
+Run locally with hot reload:
+
+```ts
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+});
+```
+
+### Frontends
+
+Start their dev server instead of deploying:
+
+```ts
+const site = new sst.aws.Nextjs("MySite");
+// Runs: next dev
+```
+
+Customize the dev command:
+
+```ts
+const site = new sst.aws.Nextjs("MySite", {
+  dev: {
+    command: "npm run dev",
+    directory: "packages/web",
+  },
+});
+```
+
+### Services
+
+Run their dev command instead of deploying to ECS:
+
+```ts
+const service = new sst.aws.Service("MyService", {
+  dev: {
+    command: "go run main.go",
+  },
+});
+```
+
+### Databases
+
+Connect to local instances:
+
+```ts
+// Connect to local Postgres in dev
+const db = new sst.aws.Postgres("MyDatabase", {
+  dev: {
+    host: "localhost",
+    port: 5432,
+    username: "postgres",
+    password: "postgres",
+    database: "myapp",
+  },
+});
+
+// Connect to local Redis in dev
+const cache = new sst.aws.Redis("MyCache", {
+  dev: {
+    host: "localhost",
+    port: 6379,
+  },
+});
+```
+
+## Running commands
+
+Wrap commands with `sst dev` to give them access to linked resources:
+
+```bash
+sst dev -- npm run migrate
+```
+
+This runs your migration script with:
+- Access to `Resource` object
+- Same environment variables as your functions
+- Same IAM permissions
+
+### Passing flags
+
+Use `--` to pass flags to your command:
+
+```bash
+sst dev -- next dev --turbo
+sst dev -- tsx scripts/seed.ts --verbose
+```
+
+## Auto-reload
+
+SST watches for changes to your `sst.config.ts`:
+
+```ts title="sst.config.ts"
+// Add a new bucket
+const newBucket = new sst.aws.Bucket("NewBucket");
+```
+
+SST automatically:
+1. Detects the change
+2. Redeploys your infrastructure
+3. Updates linked resources
+4. Keeps your functions running
+
+<Tip>
+You can also manually trigger a redeploy by pressing `r` in the Deploy tab.
+</Tip>
+
+## VPC tunneling
+
+If your app uses a VPC with a bastion, SST automatically starts a tunnel:
+
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc", {
+  bastion: true,
+});
+```
+
+This allows your local functions to:
+- Access RDS databases in private subnets
+- Connect to ElastiCache clusters
+- Reach other private resources
+
+The tunnel runs in the **Tunnel** tab of the multiplexer.
+
+## Environment variables
+
+Environment variables work the same in dev mode:
+
+```ts title=".env"
+API_KEY=abc123
+```
+
+```ts title="sst.config.ts"
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  environment: {
+    API_KEY: process.env.API_KEY,
+  },
+});
+```
+
+Linked resources are also available:
+
+```ts title="src/handler.ts"
+import { Resource } from "sst";
+
+export const handler = async () => {
+  console.log(Resource.MyBucket.name);
+  console.log(process.env.API_KEY);
+};
+```
+
+## Performance tips
+
+### Use file watchers
+
+SST watches your function files for changes. For large projects, you might want to limit what's watched:
+
+```ts title="sst.config.ts"
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      home: "aws",
+      watch: [
+        "packages/functions",
+        "packages/core",
+      ],
+    };
+  },
+  // ...
+});
+```
+
+### Use esbuild features
+
+Enable esbuild features for faster builds:
+
+```ts
+const fn = new sst.aws.Function("MyFunction", {
+  handler: "src/handler.handler",
+  nodejs: {
+    install: ["sharp"], // Install native modules
+    esbuild: {
+      minify: true,
+      sourcemap: true,
+    },
+  },
+});
+```
+
+## Limitations
+
+### Cold starts
+
+Local functions don't experience Lambda cold starts. To test cold start behavior, deploy to a real stage:
+
+```bash
+sst deploy --stage staging
+```
+
+### Timeouts
+
+Local functions don't have Lambda's 15-minute timeout. Long-running functions will work locally but may fail when deployed.
+
+### Memory limits
+
+Local functions use your machine's memory, not Lambda's configured memory. Test memory-intensive functions in a deployed environment.
+
+## Comparing dev vs deploy
+
+| Feature | `sst dev` | `sst deploy` |
+|---------|-----------|-------------|
+| Functions | Run locally | Run in AWS |
+| Frontends | Dev server | Deployed to CDN |
+| Services | Dev command | Deployed to ECS |
+| Databases | Can use local | Always in AWS |
+| Changes | Instant | Requires redeploy |
+| Cold starts | No | Yes |
+| Debugging | Full IDE support | CloudWatch logs |
+
+## Best practices
+
+### Use dev mode for development
+
+Always use `sst dev` during development:
+
+```bash
+# Development
+sst dev
+
+# Production deployment
+sst deploy --stage production
+```
+
+### Test in a deployed stage
+
+Before deploying to production, test in a deployed staging environment:
+
+```bash
+sst deploy --stage staging
+```
+
+This catches issues that only appear in the real AWS environment.
+
+### Use environment-specific config
+
+Handle dev mode differently:
+
+```ts title="sst.config.ts"
+const db = new sst.aws.Postgres("MyDatabase", 
+  $dev
+    ? {
+        dev: {
+          host: "localhost",
+          port: 5432,
+          username: "postgres",
+          password: "postgres",
+          database: "myapp",
+        },
+      }
+    : {
+        // Production config
+      }
+);
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy to production
+  </Card>
+  <Card title="Console" icon="chart-line" href="/concepts/console">
+    Monitor your application
+  </Card>
+  <Card title="Debugging" icon="bug" href="/guides/debugging">
+    Advanced debugging techniques
+  </Card>
+  <Card title="Development Workflow" icon="code-branch" href="/guides/development-workflow">
+    Build a complete workflow
+  </Card>
+</CardGroup>

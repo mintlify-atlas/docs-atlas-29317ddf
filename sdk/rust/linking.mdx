@@ -1,0 +1,241 @@
+---
+title: "Linking (Rust)"
+description: "Link resources to Rust Lambda functions"
+---
+
+Link resources to your Rust Lambda functions to access them at runtime.
+
+## Basic Linking
+
+Link resources in your infrastructure code:
+
+```typescript sst.config.ts
+const bucket = new sst.aws.Bucket("MyBucket");
+const table = new sst.aws.Dynamo("MyTable", {
+  fields: { id: "string" },
+  primaryIndex: { hashKey: "id" }
+});
+
+new sst.aws.Function("MyRustFunction", {
+  handler: "bootstrap",
+  runtime: "rust",
+  link: [bucket, table]
+});
+```
+
+Access them in your Rust code:
+
+```rust src/main.rs
+use lambda_runtime::{service_fn, LambdaEvent, Error};
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(service_fn(handler)).await
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let bucket_name = std::env::var("SST_RESOURCE_MyBucket_name")
+        .expect("MyBucket not linked");
+    let table_name = std::env::var("SST_RESOURCE_MyTable_name")
+        .expect("MyTable not linked");
+    
+    // Use the resources
+    Ok(serde_json::json!({"statusCode": 200}))
+}
+```
+
+## Automatic Permissions
+
+Linking automatically grants IAM permissions:
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+
+new sst.aws.Function("Upload", {
+  handler: "bootstrap",
+  runtime: "rust",
+  link: [bucket]
+  // Automatically gets s3:PutObject, s3:GetObject, etc.
+});
+```
+
+## Multiple Resources
+
+Link multiple resources:
+
+```typescript
+const bucket = new sst.aws.Bucket("MyBucket");
+const table = new sst.aws.Dynamo("MyTable", { /* ... */ });
+const queue = new sst.aws.Queue("MyQueue");
+
+new sst.aws.Function("Worker", {
+  handler: "bootstrap",
+  runtime: "rust",
+  link: [bucket, table, queue]
+});
+```
+
+All accessible in your handler:
+
+```rust
+use lambda_runtime::{service_fn, LambdaEvent, Error};
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(service_fn(handler)).await
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let bucket = std::env::var("SST_RESOURCE_MyBucket_name")?;
+    let table = std::env::var("SST_RESOURCE_MyTable_name")?;
+    let queue_url = std::env::var("SST_RESOURCE_MyQueue_url")?;
+    
+    // Use all resources
+    Ok(serde_json::json!({"statusCode": 200}))
+}
+```
+
+## Linking Secrets
+
+```typescript sst.config.ts
+const secret = new sst.Secret("ApiKey");
+
+new sst.aws.Function("MyFunction", {
+  handler: "bootstrap",
+  runtime: "rust",
+  link: [secret]
+});
+```
+
+```rust src/main.rs
+use lambda_runtime::{service_fn, LambdaEvent, Error};
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(service_fn(handler)).await
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let api_key = std::env::var("SST_RESOURCE_ApiKey_value")?;
+    // Use the secret
+    Ok(serde_json::json!({"statusCode": 200}))
+}
+```
+
+## Building Rust Functions
+
+SST automatically builds your Rust functions:
+
+```typescript sst.config.ts
+new sst.aws.Function("MyFunction", {
+  handler: "bootstrap",
+  runtime: "rust"
+});
+```
+
+Project structure:
+
+```
+.
+├── sst.config.ts
+├── Cargo.toml
+└── src/
+    └── main.rs
+```
+
+Your `Cargo.toml` should include:
+
+```toml Cargo.toml
+[package]
+name = "my-function"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lambda_runtime = "*"
+tokio = { version = "1", features = ["full"] }
+serde_json = "1"
+```
+
+## Best Practices
+
+### Link Only What You Need
+
+```typescript
+// ✓ Good - minimal permissions
+new sst.aws.Function("GetUser", {
+  runtime: "rust",
+  handler: "bootstrap",
+  link: [usersTable]
+});
+
+// ✗ Avoid - over-permissioned
+new sst.aws.Function("GetUser", {
+  runtime: "rust",
+  handler: "bootstrap",
+  link: [usersTable, ordersTable, productsTable]
+});
+```
+
+### Create Type-Safe Resource Structs
+
+```rust
+struct Resources {
+    bucket_name: String,
+    table_name: String,
+    queue_url: String,
+}
+
+impl Resources {
+    fn load() -> Result<Self, std::env::VarError> {
+        Ok(Resources {
+            bucket_name: std::env::var("SST_RESOURCE_MyBucket_name")?,
+            table_name: std::env::var("SST_RESOURCE_MyTable_name")?,
+            queue_url: std::env::var("SST_RESOURCE_MyQueue_url")?,
+        })
+    }
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let resources = Resources::load()?;
+    // Use resources.bucket_name, resources.table_name, etc.
+    Ok(serde_json::json!({"statusCode": 200}))
+}
+```
+
+### Use Once Cell for Static Initialization
+
+```rust
+use once_cell::sync::Lazy;
+use aws_sdk_s3::Client;
+
+static RESOURCES: Lazy<Resources> = Lazy::new(|| {
+    Resources::load().expect("Failed to load resources")
+});
+
+static S3_CLIENT: Lazy<Client> = Lazy::new(|| {
+    let config = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(aws_config::load_from_env());
+    Client::new(&config)
+});
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    // Use RESOURCES and S3_CLIENT
+    Ok(serde_json::json!({"statusCode": 200}))
+}
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Resource Access" icon="database" href="/sdk/rust/resource">
+    Learn more about the Resource API for Rust
+  </Card>
+  <Card title="Rust Functions" icon="rust" href="/components/aws/function">
+    Deploy Rust Lambda functions
+  </Card>
+</CardGroup>

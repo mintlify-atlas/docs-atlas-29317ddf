@@ -1,0 +1,135 @@
+---
+title: Postgres
+description: Reference doc for the `sst.aws.Postgres` component.
+---
+
+The `Postgres` component lets you add a Postgres database to your app using [Amazon RDS Postgres](https://aws.amazon.com/rds/postgresql/).
+
+## Constructor
+
+```ts title="sst.config.ts"
+const database = new sst.aws.Postgres("MyDatabase");
+```
+
+## Parameters
+
+### vpc
+
+<ParamField path="vpc" type="Vpc" required>
+  The VPC to place the database in.
+
+  ```ts
+  {
+    vpc: myVpc
+  }
+  ```
+</ParamField>
+
+### version
+
+<ParamField path="version" type="string" default="16.3">
+  The Postgres version.
+
+  ```ts
+  {
+    version: "15.4"
+  }
+  ```
+</ParamField>
+
+### instance
+
+<ParamField path="instance" type="string" default="t4g.micro">
+  The database instance type.
+
+  ```ts
+  {
+    instance: "t4g.small"
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### host
+
+<Property type="Output<string>">
+  The database host.
+
+  ```ts
+  console.log(database.host);
+  ```
+</Property>
+
+### port
+
+<Property type="Output<number>">
+  The database port.
+
+  ```ts
+  console.log(database.port);
+  ```
+</Property>
+
+### database
+
+<Property type="Output<string>">
+  The database name.
+
+  ```ts
+  console.log(database.database);
+  ```
+</Property>
+
+### username
+
+<Property type="Output<string>">
+  The database username.
+
+  ```ts
+  console.log(database.username);
+  ```
+</Property>
+
+### password
+
+<Property type="Output<string>">
+  The database password.
+
+  ```ts
+  console.log(database.password);
+  ```
+</Property>
+
+## SDK
+
+Access the database connection info:
+
+```ts title="src/lambda.ts"
+import { Resource } from "sst";
+
+console.log(Resource.MyDatabase.host);
+console.log(Resource.MyDatabase.port);
+```
+
+## Examples
+
+### Create a Postgres database
+
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc");
+const database = new sst.aws.Postgres("MyDatabase", { vpc });
+```
+
+### Link to a function
+
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc");
+const database = new sst.aws.Postgres("MyDatabase", { vpc });
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/lambda.handler",
+  link: [database],
+  vpc
+});
+```

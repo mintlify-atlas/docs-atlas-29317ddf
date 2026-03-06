@@ -1,0 +1,69 @@
+---
+title: Kv
+description: Reference doc for the `sst.cloudflare.Kv` component.
+---
+
+The `Kv` component lets you add a [Cloudflare Workers KV](https://developers.cloudflare.com/kv/) namespace to your app.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const kv = new sst.cloudflare.Kv("MyKv");
+```
+
+## Properties
+
+### id
+
+<Property type="Output<string>">
+  The KV namespace ID.
+
+  ```ts
+  console.log(kv.id);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  #### namespace
+
+  <Property type="cloudflare.WorkersKvNamespace">
+    The Cloudflare Workers KV namespace.
+  </Property>
+</Property>
+
+## SDK
+
+Access the KV namespace in your worker:
+
+```ts title="src/worker.ts"
+import { Resource } from "sst";
+
+export default {
+  async fetch(request, env) {
+    const value = await env.MyKv.get("key");
+    await env.MyKv.put("key", "value");
+    return new Response(value);
+  }
+};
+```
+
+## Examples
+
+### Create a KV namespace
+
+```ts title="sst.config.ts"
+const kv = new sst.cloudflare.Kv("MyKv");
+```
+
+### Link to a worker
+
+```ts title="sst.config.ts"
+const kv = new sst.cloudflare.Kv("MyKv");
+
+new sst.cloudflare.Worker("MyWorker", {
+  handler: "src/worker.ts",
+  link: [kv]
+});
+```

@@ -1,0 +1,108 @@
+---
+title: Router
+description: Reference doc for the `sst.aws.Router` component.
+---
+
+The `Router` component lets you create a [CloudFront distribution](https://aws.amazon.com/cloudfront/) to route requests to different origins.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const router = new sst.aws.Router("MyRouter", {
+  routes: {
+    "/api/*": "https://api.example.com",
+    "/uploads/*": bucket
+  },
+  domain: "example.com"
+});
+```
+
+## Parameters
+
+### routes
+
+<ParamField path="routes" type="Record<string, string | Bucket | object>" required>
+  Define routes that map URL paths to destinations.
+
+  ```ts
+  {
+    routes: {
+      "/api/*": "https://api.example.com",
+      "/files/*": bucket
+    }
+  }
+  ```
+</ParamField>
+
+### domain
+
+<ParamField path="domain" type="string | object">
+  Set a custom domain for your router.
+
+  ```ts
+  {
+    domain: "example.com"
+  }
+  ```
+
+  Support for wildcard subdomains:
+
+  ```ts
+  {
+    domain: {
+      name: "example.com",
+      aliases: ["*.example.com"]
+    }
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### url
+
+<Property type="Output<string>">
+  The CloudFront distribution URL.
+
+  ```ts
+  console.log(router.url);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  #### distribution
+
+  <Property type="aws.cloudfront.Distribution">
+    The CloudFront distribution.
+  </Property>
+</Property>
+
+## Examples
+
+### Route to a URL
+
+```ts title="sst.config.ts"
+new sst.aws.Router("MyRouter", {
+  routes: {
+    "/api/*": "https://api.example.com"
+  },
+  domain: "example.com"
+});
+```
+
+### Route to an S3 bucket
+
+```ts title="sst.config.ts"
+const bucket = new sst.aws.Bucket("MyBucket", {
+  access: "cloudfront"
+});
+
+new sst.aws.Router("MyRouter", {
+  routes: {
+    "/files/*": bucket
+  },
+  domain: "example.com"
+});
+```

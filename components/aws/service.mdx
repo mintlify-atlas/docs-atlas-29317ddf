@@ -1,0 +1,158 @@
+---
+title: Service
+description: Reference doc for the `sst.aws.Service` component.
+---
+
+The `Service` component lets you deploy a containerized service to [Amazon ECS Fargate](https://aws.amazon.com/fargate/).
+
+## Constructor
+
+```ts title="sst.config.ts"
+const service = new sst.aws.Service("MyService", {
+  cluster,
+  vpc,
+  loadBalancer: {
+    ports: [{ listen: "80/http" }]
+  }
+});
+```
+
+## Parameters
+
+### cluster
+
+<ParamField path="cluster" type="Cluster" required>
+  The cluster to deploy this service in.
+
+  ```ts
+  {
+    cluster: myCluster
+  }
+  ```
+</ParamField>
+
+### vpc
+
+<ParamField path="vpc" type="Vpc" required>
+  The VPC to deploy this service in.
+
+  ```ts
+  {
+    vpc: myVpc
+  }
+  ```
+</ParamField>
+
+### image
+
+<ParamField path="image" type="string | object">
+  The Docker image or Dockerfile to use for the service.
+
+  ```ts
+  {
+    image: "nginx:latest"
+  }
+  ```
+
+  Or use a Dockerfile:
+
+  ```ts
+  {
+    image: {
+      context: "./app",
+      dockerfile: "Dockerfile"
+    }
+  }
+  ```
+</ParamField>
+
+### cpu
+
+<ParamField path="cpu" type="string" default="0.25 vCPU">
+  The CPU units for the task.
+
+  ```ts
+  {
+    cpu: "1 vCPU"
+  }
+  ```
+</ParamField>
+
+### memory
+
+<ParamField path="memory" type="string" default="0.5 GB">
+  The memory for the task.
+
+  ```ts
+  {
+    memory: "2 GB"
+  }
+  ```
+</ParamField>
+
+### link
+
+<ParamField path="link" type="array">
+  [Link resources](/docs/linking/) to the service.
+
+  ```ts
+  {
+    link: [bucket, database]
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### url
+
+<Property type="Output<string>">
+  The load balancer URL if configured.
+
+  ```ts
+  console.log(service.url);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  #### service
+
+  <Property type="aws.ecs.Service">
+    The Amazon ECS Service.
+  </Property>
+</Property>
+
+## Examples
+
+### Deploy a service
+
+```ts title="sst.config.ts"
+const vpc = new sst.aws.Vpc("MyVpc");
+const cluster = new sst.aws.Cluster("MyCluster", { vpc });
+
+new sst.aws.Service("MyService", {
+  cluster,
+  vpc,
+  loadBalancer: {
+    ports: [{ listen: "80/http" }]
+  }
+});
+```
+
+### Use a Dockerfile
+
+```ts title="sst.config.ts"
+new sst.aws.Service("MyService", {
+  cluster,
+  vpc,
+  image: {
+    context: "./app",
+    dockerfile: "Dockerfile"
+  },
+  loadBalancer: {
+    ports: [{ listen: "80/http" }]
+  }
+});
+```

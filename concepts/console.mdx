@@ -1,0 +1,351 @@
+---
+title: SST Console
+description: Monitor and manage your SST applications
+---
+
+The SST Console is a web-based dashboard for managing your SST applications. It provides real-time visibility into your infrastructure, logs, and deployments.
+
+## What is the Console?
+
+The SST Console at [console.sst.dev](https://console.sst.dev) lets you:
+
+- **View resources** — See all your deployed infrastructure
+- **Monitor logs** — Stream Lambda logs in real-time  
+- **Manage stages** — View and manage different environments
+- **Auto-deploy** — Automatically deploy on git push
+- **Manage secrets** — Set and update secrets per stage
+- **View metrics** — Track function invocations and errors
+
+<Info>
+The Console is a hosted service provided by SST. It's free for open-source projects.
+</Info>
+
+## Getting started
+
+### Sign up
+
+1. Go to [console.sst.dev](https://console.sst.dev)
+2. Sign in with GitHub or email
+3. Connect your AWS account
+4. Deploy your app with SST
+
+Your app will automatically appear in the Console after the first deployment.
+
+### Connect AWS
+
+The Console needs access to your AWS account to show your resources:
+
+1. Click **Connect AWS** in the Console
+2. Follow the prompts to create an IAM role
+3. The Console uses this role to read your resources
+
+<Warning>
+The Console only needs read access to your AWS resources. It cannot modify or delete anything.
+</Warning>
+
+## Features
+
+### Resources
+
+View all resources in your app:
+
+- Lambda functions
+- S3 buckets
+- DynamoDB tables
+- API Gateway APIs
+- And more...
+
+Click any resource to see its details, configuration, and related resources.
+
+### Logs
+
+Stream logs from your Lambda functions in real-time:
+
+- Filter by function name
+- Search log content
+- View structured logs
+- Export to external tools
+
+The Console automatically tails CloudWatch logs and displays them with syntax highlighting.
+
+### Issues
+
+See errors and issues across your application:
+
+- Lambda function errors
+- Failed invocations
+- Timeout errors
+- Memory limit errors
+
+Each issue includes:
+- Stack trace
+- Function context
+- Related logs
+- Timestamp
+
+### Local Logs
+
+When running `sst dev`, the Console shows logs from your local functions too. This gives you a unified view of both local and deployed logs.
+
+## Autodeploy
+
+The Console can automatically deploy your app when you push to GitHub:
+
+### Setup
+
+1. Connect your GitHub repository to the Console
+2. Configure deployment triggers in your `sst.config.ts`
+3. Push to your repo
+
+SST will automatically deploy based on your configuration.
+
+### Configuration
+
+Configure autodeploy in your `sst.config.ts`:
+
+```ts title="sst.config.ts"
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      home: "aws",
+    };
+  },
+  console: {
+    autodeploy: {
+      target(event) {
+        // Deploy main branch to production
+        if (
+          event.type === "branch" &&
+          event.branch === "main" &&
+          event.action === "pushed"
+        ) {
+          return { stage: "production" };
+        }
+        
+        // Deploy PRs to preview stages
+        if (event.type === "pull_request") {
+          return { stage: `pr-${event.number}` };
+        }
+      },
+      runner(stage) {
+        // Use larger runners for production
+        if (stage === "production") {
+          return { 
+            compute: "large",
+            timeout: "3 hours",
+          };
+        }
+      },
+    },
+  },
+  async run() {
+    // Your resources...
+  },
+});
+```
+
+### Environments
+
+Map stages to AWS accounts in the Console:
+
+1. Go to your app settings
+2. Add an environment (e.g., `production`)
+3. Select the AWS account
+4. Set environment variables
+
+When autodeploy targets a stage, it uses the corresponding environment's AWS account and variables.
+
+### Runners
+
+Autodeploy uses AWS CodeBuild in your account to run deployments. You can configure:
+
+- **Compute size** — From small (3 GB) to 2xlarge (145 GB)
+- **Architecture** — x86_64 or arm64
+- **Timeout** — From 5 minutes to 36 hours
+- **VPC** — Deploy from within your VPC
+- **Cache** — Cache dependencies between builds
+
+```ts title="sst.config.ts"
+console: {
+  autodeploy: {
+    runner: {
+      engine: "codebuild",
+      architecture: "x86_64",
+      compute: "large",
+      timeout: "2 hours",
+      cache: {
+        paths: ["node_modules", ".sst"],
+      },
+    },
+  },
+},
+```
+
+<Tip>
+Runners are shared across apps in the same AWS account and region. You only pay for build minutes used.
+</Tip>
+
+### Custom workflows
+
+Customize what runs during deployment:
+
+```ts title="sst.config.ts"
+console: {
+  autodeploy: {
+    async workflow({ $, event }) {
+      // Install dependencies
+      await $`npm i -g pnpm`;
+      await $`pnpm i`;
+      
+      // Run tests
+      await $`pnpm test`;
+      
+      // Deploy or remove based on event
+      event.action === "removed"
+        ? await $`pnpm sst remove`
+        : await $`pnpm sst deploy`;
+    },
+  },
+},
+```
+
+The workflow runs in a Bun shell with access to `$` for running commands.
+
+## Secrets
+
+Manage secrets through the Console:
+
+1. Go to your app in the Console
+2. Click **Secrets**
+3. Add or update secrets
+4. Secrets are encrypted and stored in your AWS account
+
+Secrets set through the Console are immediately available to your functions (in `sst dev`) or after the next deployment.
+
+### Per-stage secrets
+
+Set different secret values for each stage:
+
+```bash
+# Development
+sst secret set StripeKey sk_test_abc123 --stage dev
+
+# Production
+sst secret set StripeKey sk_live_xyz789 --stage production
+```
+
+Or use the Console UI to set secrets per stage.
+
+### Fallback secrets
+
+Set fallback values that apply to all stages:
+
+```bash
+sst secret set ApiKey default-key --fallback
+```
+
+If a stage doesn't have a specific value, it uses the fallback.
+
+## Alerts
+
+Configure alerts for important events:
+
+- **Deployment failures** — Get notified when deploys fail
+- **Function errors** — Alert on Lambda errors
+- **High invocations** — Monitor unusual traffic
+
+Alerts can be sent via:
+- Email
+- Slack
+- Discord
+- Webhook
+
+## Collaboration
+
+Invite team members to your app:
+
+1. Go to app settings
+2. Click **Invite member**
+3. Enter their email
+4. Set their role (admin or viewer)
+
+Team members can:
+- View resources and logs
+- Trigger deployments (admins only)
+- Manage secrets (admins only)
+
+## Privacy & Security
+
+### Data storage
+
+- **Logs** — Stored encrypted for 30 days
+- **Metadata** — Resource names, ARNs, and configurations
+- **Secrets** — Encrypted in your AWS account (SST never sees values)
+
+### Permissions
+
+The Console uses an IAM role with minimal permissions:
+
+- `cloudformation:Describe*`
+- `cloudformation:List*`
+- `logs:FilterLogEvents`
+- `logs:DescribeLogStreams`
+
+It **cannot** create, modify, or delete resources.
+
+### Open source
+
+The Console is built on open-source technology:
+
+- Frontend on [GitHub](https://github.com/sst/console)
+- Uses your AWS account for builds (CodeBuild)
+- Secrets stored in your S3 bucket
+
+## Pricing
+
+- **Free** for open-source projects
+- **Pro** for commercial projects with advanced features
+- **Enterprise** for large teams with dedicated support
+
+See [console.sst.dev/pricing](https://console.sst.dev/pricing) for details.
+
+### Build minutes
+
+You pay AWS directly for CodeBuild minutes used by autodeploy:
+
+- Small runners: $0.005/min
+- Medium runners: $0.01/min  
+- Large runners: $0.02/min
+
+See [AWS CodeBuild pricing](https://aws.amazon.com/codebuild/pricing/) for exact rates.
+
+## Local Console
+
+You can also run the Console locally:
+
+```bash
+git clone https://github.com/sst/console
+cd console
+npm install
+npm run dev
+```
+
+This gives you full control over your data and doesn't send anything to SST's servers.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Autodeploy Setup" icon="rocket" href="/guides/deployment#autodeploy">
+    Configure automatic deployments
+  </Card>
+  <Card title="Secrets Management" icon="key" href="/guides/secrets-management">
+    Manage secrets securely
+  </Card>
+  <Card title="Monitoring" icon="chart-line" href="/guides/monitoring">
+    Set up monitoring and alerts
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/sst/console">
+    View Console source code
+  </Card>
+</CardGroup>

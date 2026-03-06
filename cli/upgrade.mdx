@@ -1,0 +1,92 @@
+---
+title: sst upgrade
+description: Reference doc for the `sst upgrade` command.
+---
+
+Upgrade the CLI to the latest version. Or optionally, pass in a version to upgrade to.
+
+```bash
+sst upgrade
+```
+
+## How it works
+
+The `sst upgrade` command will:
+
+1. Check for the latest version (or the specified version)
+2. Download and install it
+3. Replace your current CLI installation
+
+For Node.js installations, it will update the version in your `package.json` files.
+
+## Arguments
+
+### `version`
+
+<ParamField body="version" type="string">
+  A version to upgrade to.
+</ParamField>
+
+The specific version to upgrade to. If not provided, upgrades to the latest version.
+
+```bash
+sst upgrade 0.10
+```
+
+## Examples
+
+### Upgrade to latest
+
+Upgrade to the latest version:
+
+```bash
+sst upgrade
+```
+
+### Upgrade to specific version
+
+Upgrade to a specific version:
+
+```bash
+sst upgrade 0.10
+```
+
+```bash
+sst upgrade 3.0.0
+```
+
+## Installation methods
+
+The upgrade command works differently based on how you installed SST:
+
+### Node.js projects
+
+If you installed SST via npm/yarn/pnpm, the upgrade command will:
+- Update `package.json` files
+- Run the package manager's install command
+
+### Global installation
+
+If you installed SST globally (via curl or Homebrew), the upgrade command will:
+- Download the new binary
+- Replace the existing installation
+
+### Homebrew
+
+If you installed via Homebrew, you can also use:
+
+```bash
+brew upgrade sst
+```
+
+## Checking your version
+
+To see your current version:
+
+```bash
+sst version
+```
+
+## Related
+
+- [Installation guide](/docs/reference/cli#installation) - Learn about different installation methods

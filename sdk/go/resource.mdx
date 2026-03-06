@@ -1,0 +1,326 @@
+---
+title: "Resource (Go)"
+description: "Access linked resources in Go Lambda functions"
+---
+
+The Go SDK provides type-safe access to linked resources in your Lambda functions.
+
+## Installation
+
+```bash
+go get github.com/sst/sst/v3/sdk/golang/resource
+```
+
+## Import
+
+```go
+import "github.com/sst/sst/v3/sdk/golang/resource"
+```
+
+## Usage
+
+Access linked resources:
+
+```go main.go
+package main
+
+import (
+    "context"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+func handler(ctx context.Context) error {
+    // Access linked resources
+    bucketName := resource.Get("MyBucket", "name")
+    tableName := resource.Get("MyTable", "name")
+    
+    // Use them with AWS SDK
+    return nil
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## S3 Example
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/s3"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+func handler(ctx context.Context) error {
+    cfg, err := config.LoadDefaultConfig(ctx)
+    if err != nil {
+        return err
+    }
+    
+    client := s3.NewFromConfig(cfg)
+    bucketName := resource.Get("MyBucket", "name")
+    
+    _, err = client.PutObject(ctx, &s3.PutObjectInput{
+        Bucket: &bucketName,
+        Key:    aws.String("file.txt"),
+        Body:   strings.NewReader("Hello from Go"),
+    })
+    
+    return err
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## DynamoDB Example
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+    "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+func handler(ctx context.Context) error {
+    cfg, err := config.LoadDefaultConfig(ctx)
+    if err != nil {
+        return err
+    }
+    
+    client := dynamodb.NewFromConfig(cfg)
+    tableName := resource.Get("MyTable", "name")
+    
+    _, err = client.PutItem(ctx, &dynamodb.PutItemInput{
+        TableName: &tableName,
+        Item: map[string]types.AttributeValue{
+            "id":   &types.AttributeValueMemberS{Value: "123"},
+            "data": &types.AttributeValueMemberS{Value: "Hello"},
+        },
+    })
+    
+    return err
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## SQS Example
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/sqs"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+func handler(ctx context.Context) error {
+    cfg, err := config.LoadDefaultConfig(ctx)
+    if err != nil {
+        return err
+    }
+    
+    client := sqs.NewFromConfig(cfg)
+    queueURL := resource.Get("MyQueue", "url")
+    
+    _, err = client.SendMessage(ctx, &sqs.SendMessageInput{
+        QueueUrl:    &queueURL,
+        MessageBody: aws.String(`{"action":"process"}`),
+    })
+    
+    return err
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## Secrets Example
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+    "net/http"
+)
+
+func handler(ctx context.Context) error {
+    apiKey := resource.Get("StripeSecret", "value")
+    
+    req, _ := http.NewRequest("POST", "https://api.stripe.com/v1/charges", nil)
+    req.Header.Set("Authorization", "Bearer "+apiKey)
+    
+    client := &http.Client{}
+    _, err := client.Do(req)
+    
+    return err
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## App Metadata
+
+Access app information:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+func handler(ctx context.Context) error {
+    appName := resource.Get("App", "name")
+    stage := resource.Get("App", "stage")
+    
+    fmt.Printf("Running in %s on %s stage\n", appName, stage)
+    
+    return nil
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## Error Handling
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/s3"
+    "github.com/sst/sst/v3/sdk/golang/resource"
+)
+
+func handler(ctx context.Context) error {
+    cfg, err := config.LoadDefaultConfig(ctx)
+    if err != nil {
+        return fmt.Errorf("failed to load config: %w", err)
+    }
+    
+    client := s3.NewFromConfig(cfg)
+    bucketName := resource.Get("MyBucket", "name")
+    
+    _, err = client.PutObject(ctx, &s3.PutObjectInput{
+        Bucket: &bucketName,
+        Key:    aws.String("file.txt"),
+        Body:   strings.NewReader("Hello"),
+    })
+    if err != nil {
+        return fmt.Errorf("failed to put object: %w", err)
+    }
+    
+    return nil
+}
+
+func main() {
+    lambda.Start(handler)
+}
+```
+
+## Best Practices
+
+### Initialize SDK Clients Once
+
+```go
+// ✓ Good - client initialized once
+var (
+    s3Client *s3.Client
+    once     sync.Once
+)
+
+func getS3Client(ctx context.Context) *s3.Client {
+    once.Do(func() {
+        cfg, _ := config.LoadDefaultConfig(ctx)
+        s3Client = s3.NewFromConfig(cfg)
+    })
+    return s3Client
+}
+
+func handler(ctx context.Context) error {
+    client := getS3Client(ctx)
+    // Use client
+    return nil
+}
+```
+
+### Use Context for Cancellation
+
+```go
+func handler(ctx context.Context) error {
+    cfg, err := config.LoadDefaultConfig(ctx)
+    if err != nil {
+        return err
+    }
+    
+    client := dynamodb.NewFromConfig(cfg)
+    tableName := resource.Get("MyTable", "name")
+    
+    // Context is passed to AWS SDK calls
+    _, err = client.PutItem(ctx, &dynamodb.PutItemInput{
+        TableName: &tableName,
+        Item:      map[string]types.AttributeValue{ /* ... */ },
+    })
+    
+    return err
+}
+```
+
+### Handle Errors Properly
+
+```go
+func handler(ctx context.Context) error {
+    bucketName := resource.Get("MyBucket", "name")
+    
+    if bucketName == "" {
+        return fmt.Errorf("bucket name not found")
+    }
+    
+    // Use bucket
+    return nil
+}
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Linking" icon="link" href="/sdk/go/linking">
+    Learn how to link resources to Go functions
+  </Card>
+  <Card title="Function Component" icon="function" href="/components/aws/function">
+    Deploy Go Lambda functions with SST
+  </Card>
+</CardGroup>

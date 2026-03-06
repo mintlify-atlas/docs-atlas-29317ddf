@@ -1,0 +1,92 @@
+---
+title: Bucket
+description: Reference doc for the `sst.cloudflare.Bucket` component.
+---
+
+The `Bucket` component lets you add a [Cloudflare R2 bucket](https://developers.cloudflare.com/r2/) to your app.
+
+## Constructor
+
+```ts title="sst.config.ts"
+const bucket = new sst.cloudflare.Bucket("MyBucket");
+```
+
+## Parameters
+
+### public
+
+<ParamField path="public" type="boolean" default="false">
+  Enable public access to the bucket.
+
+  ```ts
+  {
+    public: true
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### name
+
+<Property type="Output<string>">
+  The bucket name.
+
+  ```ts
+  console.log(bucket.name);
+  ```
+</Property>
+
+### domain
+
+<Property type="Output<string>">
+  The public bucket domain if public access is enabled.
+
+  ```ts
+  console.log(bucket.domain);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  #### bucket
+
+  <Property type="cloudflare.R2Bucket">
+    The Cloudflare R2 bucket.
+  </Property>
+</Property>
+
+## SDK
+
+Access the bucket in your worker:
+
+```ts title="src/worker.ts"
+import { Resource } from "sst";
+
+export default {
+  async fetch(request, env) {
+    const object = await env.MyBucket.get("file.txt");
+    return new Response(await object.text());
+  }
+};
+```
+
+## Examples
+
+### Create a bucket
+
+```ts title="sst.config.ts"
+const bucket = new sst.cloudflare.Bucket("MyBucket");
+```
+
+### Link to a worker
+
+```ts title="sst.config.ts"
+const bucket = new sst.cloudflare.Bucket("MyBucket");
+
+new sst.cloudflare.Worker("MyWorker", {
+  handler: "src/worker.ts",
+  link: [bucket]
+});
+```

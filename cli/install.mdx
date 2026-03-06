@@ -1,0 +1,73 @@
+---
+title: sst install
+description: Reference doc for the `sst install` command.
+---
+
+Installs the providers in your `sst.config.ts`. You'll need this command when:
+
+1. You add a new provider to the `providers` or `home` in your config.
+2. Or, when you want to install new providers after you `git pull` some changes.
+
+```bash
+sst install
+```
+
+<Note>
+The `sst install` command is similar to `npm install`.
+</Note>
+
+Behind the scenes, it installs the packages for your providers and adds the providers to your globals.
+
+If you don't have a version specified for your providers in your `sst.config.ts`, it'll install their latest versions.
+
+## How it works
+
+When you run `sst install`, the CLI will:
+
+1. Read the `providers` configuration from your `sst.config.ts`
+2. Download and install the provider packages
+3. Add the providers to your TypeScript globals for type safety
+4. Cache the providers for faster subsequent installs
+
+## Examples
+
+### Install all providers
+
+Install all providers defined in your config:
+
+```bash
+sst install
+```
+
+### After adding a provider manually
+
+If you manually added a provider to your `sst.config.ts`:
+
+```ts title="sst.config.ts"
+{
+  providers: {
+    aws: "6.27.0",
+    cloudflare: "5.0.0"  // newly added
+  }
+}
+```
+
+Run install to download it:
+
+```bash
+sst install
+```
+
+### After pulling changes
+
+When you pull changes that include new providers:
+
+```bash
+git pull
+sst install
+```
+
+## Related
+
+- [`sst add`](/docs/reference/cli/add) - Add a new provider
+- [`sst init`](/docs/reference/cli/init) - Initialize a new project

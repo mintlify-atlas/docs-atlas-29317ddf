@@ -1,0 +1,158 @@
+---
+title: Configuration
+description: Learn how to configure the SST CLI.
+---
+
+The SST CLI is configured through the `sst.config.ts` file in your project root. This file defines your app, its providers, and all resources.
+
+## Basic structure
+
+A minimal `sst.config.ts` looks like this:
+
+```ts title="sst.config.ts"
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      removal: input?.stage === "production" ? "retain" : "remove",
+      home: "aws",
+    };
+  },
+  async run() {
+    // Your resources go here
+  },
+});
+```
+
+## App configuration
+
+The `app` function returns configuration for your application:
+
+### `name`
+
+**Type:** `string`
+
+The name of your app. This is used to prefix all resources.
+
+```ts
+name: "my-app"
+```
+
+### `home`
+
+**Type:** `string`
+
+The default provider for your app. Can be `aws`, `cloudflare`, etc.
+
+```ts
+home: "aws"
+```
+
+### `removal`
+
+**Type:** `"remove" | "retain" | "retain-all"`
+
+The removal policy for resources:
+
+- `remove` - Resources are deleted when you run `sst remove`
+- `retain` - Resources are kept when you run `sst remove`
+- `retain-all` - All resources are kept
+
+```ts
+removal: input?.stage === "production" ? "retain" : "remove"
+```
+
+### `providers`
+
+**Type:** `Record<string, string | ProviderConfig>`
+
+Define the providers your app uses:
+
+```ts
+providers: {
+  aws: "6.27.0",
+  cloudflare: {
+    version: "5.0.0"
+  }
+}
+```
+
+## Run function
+
+The `run` function is where you define your resources:
+
+```ts
+async run() {
+  const bucket = new sst.aws.Bucket("MyBucket");
+  const api = new sst.aws.Function("MyApi", {
+    handler: "src/api.handler",
+    link: [bucket],
+  });
+  
+  return {
+    api: api.url,
+  };
+}
+```
+
+The returned values are outputs that will be displayed after deployment.
+
+## Environment variables
+
+You can access environment variables in your config:
+
+```ts
+export default $config({
+  app(input) {
+    return {
+      name: process.env.APP_NAME || "my-app",
+      // ...
+    };
+  },
+});
+```
+
+## Stage-specific configuration
+
+Use the `input` parameter to configure based on stage:
+
+```ts
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      removal: input?.stage === "production" ? "retain" : "remove",
+      home: "aws",
+    };
+  },
+  async run() {
+    const isProd = $app.stage === "production";
+    
+    new sst.aws.Function("MyFunction", {
+      handler: "src/index.handler",
+      memory: isProd ? "2 GB" : "1 GB",
+    });
+  },
+});
+```
+
+## Watch configuration
+
+Configure which files trigger a redeploy in `sst dev`:
+
+```ts
+export default $config({
+  app(input) {
+    return {
+      name: "my-app",
+      watch: ["src/**/*.ts"],
+    };
+  },
+});
+```
+
+## Related
+
+- [Components documentation](/docs/components) - Learn about SST components
+- [Providers documentation](/docs/providers) - Learn about providers
+- [`sst install`](/docs/reference/cli/install) - Install providers

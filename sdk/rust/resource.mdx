@@ -1,0 +1,302 @@
+---
+title: "Resource (Rust)"
+description: "Access linked resources in Rust Lambda functions"
+---
+
+The Rust SDK provides zero-cost access to linked resources in your Lambda functions.
+
+## Installation
+
+Add SST to your `Cargo.toml`:
+
+```toml Cargo.toml
+[dependencies]
+sst = "*"
+aws-sdk-s3 = "*"
+aws-sdk-dynamodb = "*"
+lambda_runtime = "*"
+tokio = { version = "1", features = ["full"] }
+```
+
+## Usage
+
+Access linked resources:
+
+```rust main.rs
+use lambda_runtime::{service_fn, LambdaEvent, Error};
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(service_fn(handler)).await
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    // Access linked resources via environment variables
+    let bucket_name = std::env::var("SST_RESOURCE_MyBucket_name")
+        .expect("MyBucket not linked");
+    
+    // Use the resource
+    Ok(serde_json::json!({
+        "statusCode": 200,
+        "body": format!("Using bucket: {}", bucket_name)
+    }))
+}
+```
+
+## S3 Example
+
+```rust
+use aws_sdk_s3::Client;
+use lambda_runtime::{service_fn, LambdaEvent, Error};
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(service_fn(handler)).await
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let config = aws_config::load_from_env().await;
+    let client = Client::new(&config);
+    
+    let bucket_name = std::env::var("SST_RESOURCE_MyBucket_name")
+        .expect("MyBucket not linked");
+    
+    client
+        .put_object()
+        .bucket(&bucket_name)
+        .key("file.txt")
+        .body("Hello from Rust".into())
+        .send()
+        .await?;
+    
+    Ok(serde_json::json!({
+        "statusCode": 200
+    }))
+}
+```
+
+## DynamoDB Example
+
+```rust
+use aws_sdk_dynamodb::Client;
+use aws_sdk_dynamodb::types::AttributeValue;
+use lambda_runtime::{service_fn, LambdaEvent, Error};
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(service_fn(handler)).await
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let config = aws_config::load_from_env().await;
+    let client = Client::new(&config);
+    
+    let table_name = std::env::var("SST_RESOURCE_MyTable_name")
+        .expect("MyTable not linked");
+    
+    client
+        .put_item()
+        .table_name(&table_name)
+        .item("id", AttributeValue::S("123".into()))
+        .item("data", AttributeValue::S("Hello".into()))
+        .send()
+        .await?;
+    
+    Ok(serde_json::json!({
+        "statusCode": 200
+    }))
+}
+```
+
+## Secrets Example
+
+```rust
+use lambda_runtime::{service_fn, LambdaEvent, Error};
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(service_fn(handler)).await
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let api_key = std::env::var("SST_RESOURCE_StripeSecret_value")
+        .expect("StripeSecret not linked");
+    
+    // Use the secret
+    let client = reqwest::Client::new();
+    let response = client
+        .post("https://api.stripe.com/v1/charges")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .send()
+        .await?;
+    
+    Ok(serde_json::json!({
+        "statusCode": 200
+    }))
+}
+```
+
+## App Metadata
+
+```rust
+use lambda_runtime::{service_fn, LambdaEvent, Error};
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(service_fn(handler)).await
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let app_name = std::env::var("SST_RESOURCE_App_name")
+        .unwrap_or_else(|_| "unknown".to_string());
+    let stage = std::env::var("SST_RESOURCE_App_stage")
+        .unwrap_or_else(|_| "unknown".to_string());
+    
+    println!("Running in {} on {} stage", app_name, stage);
+    
+    Ok(serde_json::json!({
+        "statusCode": 200
+    }))
+}
+```
+
+## Error Handling
+
+```rust
+use aws_sdk_s3::Client;
+use lambda_runtime::{service_fn, LambdaEvent, Error};
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(service_fn(handler)).await
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let config = aws_config::load_from_env().await;
+    let client = Client::new(&config);
+    
+    let bucket_name = match std::env::var("SST_RESOURCE_MyBucket_name") {
+        Ok(name) => name,
+        Err(_) => {
+            return Ok(serde_json::json!({
+                "statusCode": 500,
+                "body": "Bucket not linked"
+            }));
+        }
+    };
+    
+    match client
+        .put_object()
+        .bucket(&bucket_name)
+        .key("file.txt")
+        .body("Hello".into())
+        .send()
+        .await
+    {
+        Ok(_) => Ok(serde_json::json!({"statusCode": 200})),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            Ok(serde_json::json!({
+                "statusCode": 500,
+                "body": "Internal server error"
+            }))
+        }
+    }
+}
+```
+
+## Best Practices
+
+### Use Static Initialization
+
+```rust
+use aws_sdk_s3::Client;
+use lambda_runtime::{service_fn, LambdaEvent, Error};
+use once_cell::sync::Lazy;
+use serde_json::Value;
+
+static S3_CLIENT: Lazy<Client> = Lazy::new(|| {
+    let config = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(aws_config::load_from_env());
+    Client::new(&config)
+});
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(service_fn(handler)).await
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    // Use the static client
+    let bucket_name = std::env::var("SST_RESOURCE_MyBucket_name")?;
+    S3_CLIENT.put_object().bucket(&bucket_name).send().await?;
+    
+    Ok(serde_json::json!({"statusCode": 200}))
+}
+```
+
+### Type-Safe Environment Variables
+
+```rust
+struct Resources {
+    bucket_name: String,
+    table_name: String,
+}
+
+impl Resources {
+    fn load() -> Result<Self, std::env::VarError> {
+        Ok(Resources {
+            bucket_name: std::env::var("SST_RESOURCE_MyBucket_name")?,
+            table_name: std::env::var("SST_RESOURCE_MyTable_name")?,
+        })
+    }
+}
+
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let resources = Resources::load()?;
+    
+    // Use resources.bucket_name and resources.table_name
+    Ok(serde_json::json!({"statusCode": 200}))
+}
+```
+
+### Handle Errors with Result
+
+```rust
+async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    let bucket_name = std::env::var("SST_RESOURCE_MyBucket_name")
+        .map_err(|_| "Bucket not linked")?;
+    
+    let config = aws_config::load_from_env().await;
+    let client = Client::new(&config);
+    
+    client
+        .put_object()
+        .bucket(&bucket_name)
+        .key("file.txt")
+        .body("Hello".into())
+        .send()
+        .await
+        .map_err(|e| format!("S3 error: {}", e))?;
+    
+    Ok(serde_json::json!({"statusCode": 200}))
+}
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Linking" icon="link" href="/sdk/rust/linking">
+    Learn how to link resources to Rust functions
+  </Card>
+  <Card title="Function Component" icon="function" href="/components/aws/function">
+    Deploy Rust Lambda functions with SST
+  </Card>
+</CardGroup>

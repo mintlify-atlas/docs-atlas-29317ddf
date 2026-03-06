@@ -1,0 +1,89 @@
+---
+title: sst remove
+description: Reference doc for the `sst remove` command.
+---
+
+Removes your application. By default, it removes your personal stage.
+
+```bash
+sst remove
+```
+
+<Note>
+The resources in your app are removed based on the `removal` setting in your `sst.config.ts`.
+</Note>
+
+This does not remove the SST _state_ and _bootstrap_ resources in your account as these might still be in use by other apps. You can remove them manually if you want to reset your account, [learn more](/docs/state/#reset).
+
+## How it works
+
+When you run `sst remove`, it will:
+
+1. Read your `sst.config.ts` to identify all resources
+2. Remove resources based on their `removal` policy
+3. Clean up the stage-specific state
+
+Resources with `removal: "retain"` will not be deleted and will remain in your AWS account.
+
+## Options
+
+### `--target`
+
+Only run it for the given component.
+
+```bash
+sst remove --target MyComponent
+```
+
+You can also remove a specific component by passing in the name of the component from your `sst.config.ts`.
+
+## Examples
+
+### Remove your personal stage
+
+Remove the default personal stage:
+
+```bash
+sst remove
+```
+
+### Remove a specific stage
+
+Remove your app from a specific stage:
+
+```bash
+sst remove --stage production
+```
+
+### Remove a specific component
+
+Remove only a specific component:
+
+```bash
+sst remove --target MyComponent
+```
+
+## Important notes
+
+### State and bootstrap resources
+
+The `sst remove` command does not remove:
+- SST state resources (S3 bucket for state storage)
+- Bootstrap resources (IAM roles, etc.)
+
+These resources might be shared across multiple stages or apps, so they're preserved. If you need to clean these up, you'll need to do it manually.
+
+### Removal policies
+
+Resources respect their configured `removal` policy:
+- `removal: "remove"` - Resource will be deleted
+- `removal: "retain"` - Resource will be kept in your account
+- `removal: "retain-all"` - All resources will be kept
+
+Make sure to review your removal policies before running `sst remove` on production stages.
+
+## Related
+
+- [`sst deploy`](/docs/reference/cli/deploy) - Deploy your application
+- [`sst refresh`](/docs/reference/cli/refresh) - Refresh your app state
+- [State documentation](/docs/state) - Learn more about SST state

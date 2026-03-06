@@ -1,0 +1,591 @@
+---
+title: Development Workflow
+description: Build an efficient workflow for your team
+---
+
+This guide covers best practices for setting up a productive development workflow with SST, from local development to production deployment.
+
+## Overview
+
+A typical SST workflow involves:
+
+1. **Local development** with `sst dev`
+2. **Testing** in personal stages
+3. **Code review** with pull requests
+4. **Staging deployment** for QA
+5. **Production deployment** after approval
+
+## Local development
+
+Start with `sst dev` for the fastest feedback loop:
+
+```bash
+sst dev
+```
+
+This gives you:
+- Instant code changes without redeployment
+- Local debugging with breakpoints
+- Real AWS infrastructure
+- Hot reload for functions and frontends
+
+### Personal stages
+
+Each developer gets their own stage:
+
+```bash
+# Alice's stage
+sst dev --stage alice
+
+# Bob's stage
+sst dev --stage bob
+```
+
+SST defaults to your username, so typically you just run:
+
+```bash
+sst dev
+```
+
+<Tip>
+Personal stages let developers work independently without conflicting resources.
+</Tip>
+
+### Running multiple apps
+
+If you need to run multiple SST apps:
+
+```bash
+# Terminal 1 - Backend
+cd backend
+sst dev
+
+# Terminal 2 - Frontend  
+cd frontend
+sst dev
+```
+
+## Making changes
+
+### Function code
+
+Edit your function code and see changes immediately:
+
+```ts title="src/api.ts"
+export const handler = async (event: any) => {
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message: "Updated!" }),
+  };
+};
+```
+
+No redeployment needed—just trigger the function again.
+
+### Infrastructure changes
+
+Edit `sst.config.ts` and SST auto-deploys:
+
+```ts title="sst.config.ts"
+// Add a new bucket
+const uploads = new sst.aws.Bucket("UploadsBucket");
+```
+
+SST detects the change and redeploys automatically.
+
+### Frontend changes
+
+Frontend dev servers run in the multiplexer:
+
+- Next.js: `next dev`
+- Remix: `remix dev`
+- Astro: `astro dev`
+
+Changes are reflected through the normal dev server.
+
+## Testing
+
+### Unit tests
+
+Test business logic independently:
+
+```ts title="src/api.test.ts"
+import { describe, it, expect } from "vitest";
+import { processOrder } from "./api";
+
+describe("processOrder", () => {
+  it("calculates total correctly", () => {
+    const result = processOrder({ items: [{ price: 10, quantity: 2 }] });
+    expect(result.total).toBe(20);
+  });
+});
+```
+
+### Integration tests
+
+Test against real infrastructure with `sst dev`:
+
+```ts title="tests/api.test.ts"
+import { Resource } from "sst";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const s3 = new S3Client({});
+
+test("upload to bucket", async () => {
+  await s3.send(new PutObjectCommand({
+    Bucket: Resource.MyBucket.name,
+    Key: "test.txt",
+    Body: "test content",
+  }));
+  
+  // Verify upload succeeded
+});
+```
+
+Run with `sst dev`:
+
+```bash
+sst dev -- npm test
+```
+
+### End-to-end tests
+
+Test full user flows:
+
+```ts title="tests/e2e/checkout.test.ts"
+import { test, expect } from "@playwright/test";
+
+test("complete checkout flow", async ({ page }) => {
+  await page.goto(process.env.SITE_URL!);
+  await page.click('text="Add to Cart"');
+  await page.click('text="Checkout"');
+  await expect(page).toHaveText("Order confirmed");
+});
+```
+
+## Git workflow
+
+### Feature branches
+
+Create a branch for each feature:
+
+```bash
+git checkout -b feature/new-api-endpoint
+
+# Make changes
+git add .
+git commit -m "Add new API endpoint"
+git push origin feature/new-api-endpoint
+```
+
+### Pull requests
+
+1. Open a PR from your feature branch
+2. Autodeploy creates a preview stage
+3. Teammates review the code
+4. Run tests in the preview stage
+5. Merge when approved
+
+### Preview deployments
+
+Configure autodeploy for PRs:
+
+```ts title="sst.config.ts"
+console: {
+  autodeploy: {
+    target(event) {
+      // Deploy PRs to preview stages
+      if (event.type === "pull_request") {
+        return { stage: `pr-${event.number}` };
+      }
+      
+      // Deploy main to production
+      if (event.type === "branch" && event.branch === "main") {
+        return { stage: "production" };
+      }
+    },
+  },
+},
+```
+
+Each PR gets its own stage:
+- `pr-123` for PR #123
+- `pr-456` for PR #456
+
+<Info>
+Preview stages are automatically removed when the PR is closed.
+</Info>
+
+## Staging environment
+
+Deploy to staging before production:
+
+```bash
+sst deploy --stage staging
+```
+
+Use staging for:
+- QA testing
+- Client demos
+- Final verification before production
+
+### Staging configuration
+
+Configure staging differently:
+
+```ts title="sst.config.ts"
+app(input) {
+  return {
+    name: "my-app",
+    home: "aws",
+    removal: input.stage === "production" ? "retain" : "remove",
+    providers: {
+      aws: {
+        region: input.stage === "production" ? "us-east-1" : "us-west-2",
+      },
+    },
+  };
+}
+```
+
+### Staging data
+
+Use separate data for staging:
+
+```ts
+const db = new sst.aws.Postgres("Database", {
+  instance: $app.stage === "production" ? "db.t4g.large" : "db.t4g.small",
+});
+```
+
+Seed staging with test data:
+
+```bash
+sst dev --stage staging -- npm run seed
+```
+
+## Production deployment
+
+Deploy to production after staging verification:
+
+### Manual deployment
+
+```bash
+git checkout main
+git pull
+sst deploy --stage production
+```
+
+### Automated deployment
+
+Merge to main triggers autodeploy:
+
+```bash
+git checkout main
+git merge feature/new-api-endpoint
+git push
+# Autodeploy handles the rest
+```
+
+### Deployment checklist
+
+Before deploying to production:
+
+- [ ] All tests pass
+- [ ] Staging verification complete
+- [ ] Database migrations tested
+- [ ] Secrets updated (if needed)
+- [ ] Team notified
+- [ ] Rollback plan ready
+
+## Monitoring
+
+### Check deployment status
+
+Monitor deployment in the Console:
+
+1. Open [console.sst.dev](https://console.sst.dev)
+2. View deployment progress
+3. Check for errors
+4. Verify resources created
+
+### View logs
+
+Stream logs from your functions:
+
+```bash
+# View all logs
+sst logs
+
+# View specific function
+sst logs --function MyApi
+
+# Follow logs in real-time
+sst logs --tail
+```
+
+Or use the Console to view logs visually.
+
+### Alerts
+
+Set up alerts in the Console:
+
+- Deployment failures
+- Function errors
+- High invocation rates
+- Timeout errors
+
+## Rollback
+
+If something goes wrong:
+
+### Quick rollback
+
+Deploy the previous version:
+
+```bash
+git checkout main
+git revert HEAD
+git push
+# Autodeploy deploys the previous version
+```
+
+### Manual rollback
+
+```bash
+git log # Find previous working commit
+git checkout abc123
+sst deploy --stage production
+```
+
+### Database rollback
+
+For database changes, run reverse migrations:
+
+```bash
+sst dev --stage production -- npm run migrate:down
+```
+
+## Secrets management
+
+### Development secrets
+
+Set secrets for your personal stage:
+
+```bash
+sst secret set ApiKey dev_key_123
+```
+
+### Production secrets
+
+Set production secrets separately:
+
+```bash
+sst secret set ApiKey prod_key_xyz --stage production
+```
+
+### Fallback secrets
+
+Set fallback values for all stages:
+
+```bash
+sst secret set DefaultApiKey fallback_key --fallback
+```
+
+<Tip>
+Use fallback secrets for preview stages so they don't need individual secret values.
+</Tip>
+
+## Database migrations
+
+### Running migrations
+
+Run migrations with `sst dev`:
+
+```bash
+# Development
+sst dev -- npm run migrate
+
+# Staging
+sst dev --stage staging -- npm run migrate
+
+# Production
+sst dev --stage production -- npm run migrate
+```
+
+### Migration tools
+
+Use migration tools like:
+
+- **Drizzle** for type-safe migrations
+- **Prisma** for schema management
+- **Kysely** for SQL migrations
+
+Example with Drizzle:
+
+```ts title="drizzle.config.ts"
+import { Resource } from "sst";
+import { defineConfig } from "drizzle-kit";
+
+export default defineConfig({
+  schema: "./src/schema.ts",
+  out: "./drizzle",
+  dialect: "postgresql",
+  dbCredentials: {
+    host: Resource.Database.host,
+    port: Resource.Database.port,
+    user: Resource.Database.username,
+    password: Resource.Database.password,
+    database: Resource.Database.database,
+  },
+});
+```
+
+## Team collaboration
+
+### Shared infrastructure
+
+Use a shared AWS account for development:
+
+- Each developer uses their own stage
+- Resources are prefixed by stage
+- No conflicts between developers
+
+### Code reviews
+
+Review infrastructure changes:
+
+```diff
+// sst.config.ts
++const uploads = new sst.aws.Bucket("UploadsBucket", {
++  public: true,
++});
+```
+
+Reviewers should check:
+- Resource configurations
+- IAM permissions
+- Cost implications
+- Security settings
+
+### Documentation
+
+Document your workflow:
+
+```md title="CONTRIBUTING.md"
+## Development Workflow
+
+1. Create a feature branch
+2. Run `sst dev` for local development
+3. Push changes and open a PR
+4. Wait for preview deployment
+5. Get code review approval
+6. Merge to main
+7. Autodeploy handles production
+```
+
+## Environment parity
+
+Keep environments similar:
+
+```ts title="sst.config.ts"
+const config = {
+  dev: {
+    instance: "db.t4g.small",
+    version: "15.4",
+  },
+  staging: {
+    instance: "db.t4g.medium",
+    version: "15.4", // Same version
+  },
+  production: {
+    instance: "db.t4g.large",
+    version: "15.4", // Same version
+  },
+};
+
+const db = new sst.aws.Postgres("Database", 
+  config[$app.stage] || config.dev
+);
+```
+
+## Best practices
+
+### Use feature flags
+
+Deploy code without enabling features:
+
+```ts
+const featureEnabled = 
+  $app.stage === "production" 
+    ? process.env.FEATURE_ENABLED === "true"
+    : true;
+
+if (featureEnabled) {
+  // New feature code
+}
+```
+
+### Keep PRs small
+
+Smaller PRs are:
+- Easier to review
+- Faster to deploy
+- Lower risk
+- Easier to rollback
+
+### Test locally first
+
+Always test with `sst dev` before pushing:
+
+```bash
+sst dev
+# Test your changes
+# Verify everything works
+git commit
+git push
+```
+
+### Automate testing
+
+Run tests on every PR:
+
+```yaml title=".github/workflows/test.yml"
+name: Test
+
+on: [pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm install
+      - run: npm test
+```
+
+### Monitor production
+
+Set up monitoring:
+- Error tracking (Sentry)
+- Performance monitoring (Datadog)
+- Uptime monitoring (Pingdom)
+- Log aggregation (Logtail)
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Learn about deployment options
+  </Card>
+  <Card title="Stage Management" icon="layer-group" href="/guides/stage-management">
+    Manage multiple environments
+  </Card>
+  <Card title="Secrets" icon="key" href="/guides/secrets-management">
+    Secure your secrets
+  </Card>
+  <Card title="Testing" icon="flask" href="/guides/testing">
+    Test your applications
+  </Card>
+</CardGroup>

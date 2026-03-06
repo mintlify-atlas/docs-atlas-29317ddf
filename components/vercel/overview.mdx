@@ -1,0 +1,81 @@
+---
+title: Vercel
+description: Deploy to Vercel with SST
+---
+
+SST provides support for deploying to Vercel through the Vercel platform integration.
+
+## Overview
+
+While SST primarily focuses on AWS deployments, you can deploy your SST applications to Vercel for frontend hosting while keeping your backend infrastructure on AWS or other cloud providers.
+
+## Deployment
+
+To deploy to Vercel:
+
+1. Connect your repository to Vercel
+2. Configure your build settings
+3. Deploy using Vercel's platform
+
+## Integration Patterns
+
+### Frontend on Vercel, Backend on AWS
+
+A common pattern is to deploy your frontend applications (Next.js, React, etc.) to Vercel while keeping your backend API, database, and other infrastructure on AWS using SST components.
+
+```ts title="sst.config.ts"
+export default $config({
+  async run() {
+    // AWS infrastructure
+    const api = new sst.aws.Function("Api", {
+      handler: "api/index.handler",
+      url: true
+    });
+    
+    const database = new sst.aws.Dynamo("Database", {
+      fields: { id: "string" },
+      primaryIndex: { hashKey: "id" }
+    });
+
+    // Return URLs for Vercel environment variables
+    return {
+      API_URL: api.url
+    };
+  }
+});
+```
+
+Then configure these as environment variables in your Vercel project settings.
+
+## Environment Variables
+
+You can pass SST resource outputs to Vercel as environment variables:
+
+1. Deploy your SST app: `sst deploy`
+2. Note the output URLs and values
+3. Add them as environment variables in your Vercel project settings
+4. Deploy your Vercel project
+
+## Use Cases
+
+### Next.js on Vercel with SST Backend
+
+Deploy your Next.js frontend to Vercel while using SST for:
+- API endpoints (Lambda functions)
+- Database (DynamoDB, RDS)
+- File storage (S3)
+- Authentication (Cognito)
+
+### Multi-Region Setup
+
+Use Vercel's global edge network for static assets and frontend, while SST manages regional backend services.
+
+## Learn More
+
+- [Vercel Documentation](https://vercel.com/docs)
+- [SST Linking](/docs/linking/)
+- [Environment Variables](/docs/environment-variables/)
+
+## Note
+
+SST does not provide a dedicated `sst.vercel` component namespace. The integration works by deploying your infrastructure with SST and connecting it to applications hosted on Vercel through environment variables and API endpoints.

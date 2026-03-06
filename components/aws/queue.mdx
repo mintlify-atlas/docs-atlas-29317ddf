@@ -1,0 +1,205 @@
+---
+title: Queue
+description: Reference doc for the `sst.aws.Queue` component.
+---
+
+{/* DO NOT EDIT. AUTO-GENERATED FROM pkg/platform/src/components/aws/queue.ts */}
+
+The `Queue` component lets you add a serverless queue to your app. It uses [Amazon SQS](https://aws.amazon.com/sqs/).
+
+## Constructor
+
+```ts title="sst.config.ts"
+const queue = new sst.aws.Queue("MyQueue");
+```
+
+## Parameters
+
+### fifo
+
+<ParamField path="fifo" type="boolean | object" default="false">
+  Make this a FIFO (first-in-first-out) queue. FIFO queues guarantee messages are processed exactly once in order.
+
+  ```ts
+  {
+    fifo: true
+  }
+  ```
+
+  Enable content-based deduplication:
+
+  ```ts
+  {
+    fifo: {
+      contentBasedDeduplication: true
+    }
+  }
+  ```
+
+  <Warning>
+    Changing between standard and FIFO will destroy and recreate the queue.
+  </Warning>
+</ParamField>
+
+### visibilityTimeout
+
+<ParamField path="visibilityTimeout" type="duration" default="30 seconds">
+  The time a message is invisible after being received. Between 0 seconds and 12 hours.
+
+  ```ts
+  {
+    visibilityTimeout: "1 hour"
+  }
+  ```
+</ParamField>
+
+### dlq
+
+<ParamField path="dlq" type="string | object">
+  Configure a dead-letter queue (DLQ) to store messages that can't be processed.
+
+  ```ts
+  const dlq = new sst.aws.Queue("MyDLQ");
+
+  new sst.aws.Queue("MyQueue", {
+    dlq: dlq.arn
+  });
+  ```
+
+  Customize retry count:
+
+  ```ts
+  {
+    dlq: {
+      queue: dlq.arn,
+      retry: 5
+    }
+  }
+  ```
+</ParamField>
+
+## Properties
+
+### url
+
+<Property type="Output<string>">
+  The SQS Queue URL.
+
+  ```ts
+  console.log(queue.url);
+  ```
+</Property>
+
+### arn
+
+<Property type="Output<string>">
+  The ARN of the SQS Queue.
+
+  ```ts
+  console.log(queue.arn);
+  ```
+</Property>
+
+### nodes
+
+<Property type="object">
+  The underlying resources this component creates.
+
+  #### queue
+
+  <Property type="aws.sqs.Queue">
+    The Amazon SQS Queue.
+  </Property>
+</Property>
+
+## Methods
+
+### subscribe
+
+<Method>
+  Subscribe to this queue with a function.
+
+  ```ts
+  queue.subscribe("src/subscriber.handler");
+  ```
+
+  Add filters to only process specific messages:
+
+  ```ts
+  queue.subscribe("src/subscriber.handler", {
+    filters: [
+      {
+        body: {
+          RequestCode: ["BBBB"]
+        }
+      }
+    ]
+  });
+  ```
+
+  Customize the subscriber function:
+
+  ```ts
+  queue.subscribe({
+    handler: "src/subscriber.handler",
+    timeout: "60 seconds"
+  });
+  ```
+</Method>
+
+## SDK
+
+Send messages to the queue from your function code:
+
+```ts title="src/api.ts"
+import { Resource } from "sst";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+
+const client = new SQSClient();
+
+await client.send(new SendMessageCommand({
+  QueueUrl: Resource.MyQueue.url,
+  MessageBody: JSON.stringify({ hello: "world" })
+}));
+```
+
+## Examples
+
+### Create a FIFO queue
+
+```ts title="sst.config.ts"
+new sst.aws.Queue("MyQueue", {
+  fifo: true
+});
+```
+
+### Add a subscriber
+
+```ts title="sst.config.ts"
+const queue = new sst.aws.Queue("MyQueue");
+queue.subscribe("src/subscriber.handler");
+```
+
+### Link to a function
+
+```ts title="sst.config.ts"
+const queue = new sst.aws.Queue("MyQueue");
+
+new sst.aws.Function("MyFunction", {
+  handler: "src/api.handler",
+  link: [queue]
+});
+```
+
+### Add a dead-letter queue
+
+```ts title="sst.config.ts"
+const dlq = new sst.aws.Queue("MyDLQ");
+
+new sst.aws.Queue("MyQueue", {
+  dlq: {
+    queue: dlq.arn,
+    retry: 3
+  }
+});
+```
